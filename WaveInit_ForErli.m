@@ -38,6 +38,9 @@
     end_indx_f = find(abs(time-endtime(i))<0.5);
     end_indx(i) = end_indx_f(1);
     end
+    
+    %maybe we should smooth the data;
+   % calcium = smoothdata(calcium, 1, 'movmedian',3);
 
 %% Wave origin analysis
     
@@ -49,20 +52,32 @@
     %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
     cashort = [];
-    for i = 1:5
-    cashort = calcium_demeaned(start_indx(i):end_indx(i),:);
+
+    
+    % tack together oscillations
+   cashort =  [calcium_demeaned(start_indx(1):end_indx(1),:);,...
+        calcium_demeaned(start_indx(2):end_indx(2),:);...
+        calcium_demeaned(start_indx(3):end_indx(3),:);...
+        calcium_demeaned(start_indx(4):end_indx(4),:);...
+        calcium_demeaned(start_indx(5):end_indx(5),:)];
+    
+       
+    
     step = .0005; %this gives how much to interpolate by
     xq = 1:step:size(cashort,1)+1;
-    vq1 = interp1(1:size(cashort,1),cashort,xq);
+    vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
+    %vq2 = spline(1:size(cashort,1),cashort',xq);
+    
     timeunits = mean(diff(time))*step*1000; %ms
 
     
     numcells=size(cashort,2);
 
     calciumT = (vq1);                           % new calcium time course
-    
+    [row,col] = find(isnan(calciumT)); %remove NaN's
+    calciumT = calciumT(1:row(1)-1,:);
     % 2. MAKING THE REFERENCE SIGNAL TO COMPARE THE SIGNAL OF INDIVIDUAL CELL'S CROSSCORRELATION WITH THIS REFERENCE
-    MeanIslet= (mean(calciumT,2));       % reference signal. Index (i-(st-1)) is here to account for times when st is not 0, otherwise indexing is wrong
+    MeanIslet= mean(calciumT,2);       % reference signal. Index (i-(st-1)) is here to account for times when st is not 0, otherwise indexing is wrong
     clear vq1 cashort xq camax
 
     % 3. OBTAINING CROSS-CORRELATION OF THE REFERENCE SIGNAL (MEANISLET) WITH EACH INDIVIDUAL CELL
@@ -85,12 +100,17 @@
     %cells_sorted is what you are really interested in. This gives the cell
     %index in order from high phase (start earlier) to low
     %phase (start later)
-    [phasevecsort(i,:), cells_sorted(i,:)] = sort(newmaxCLvec); 
+    [phasevecsort, cells_sorted] = sort(newmaxCLvec); 
+    finalphase = newmaxCLvec;
     
     
     
-    end
     
+    
+    
+    
+    %find the average phase for all oscillations
+    allphase = mean(finalphase);
     
      figure, plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
      hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
