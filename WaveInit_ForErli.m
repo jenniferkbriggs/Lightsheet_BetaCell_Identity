@@ -7,6 +7,10 @@ clear all
 close all
 clc
 
+%changing defaults
+set(0, 'defaultFigureUnits','normalized', 'defaultFigurePosition', [0.4375 0.1100 0.4675 0.5671]);
+set(0,'defaultAxesFontSize',16)
+
 fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/')
 filename = 'F03 10G'
 fullfile = [fileloc filename]
@@ -159,13 +163,13 @@ fullfile = [fileloc filename]
     axg.data(i) = gca
     legend([line1(1), line2(1)], {'High Phase','Low Phase'})
      end
-     
+          linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
+
         saveas(gcf, [fileloc 'OscillationsWPhase.png'])
-        saveas(gcf, [fileloc 'OscillationsWPhase.mat'])
+        saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
 
      
      
-     linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
     X = Locations(:,1);
     Y = Locations(:,2);
     Z = Locations(:,3);
@@ -197,6 +201,18 @@ fullfile = [fileloc filename]
     ylabel('Phase (1 = first to depolarize)')
     xlabel('Oscillation')
     saveas(gcf, [fileloc 'Highphasetraj.png'])
+    
+    %find percent of cells still within the top 5
+    for i = 1:5
+    retained(i) = length(intersect(cells_sorted(i,1:top5), topcells))./top5
+    end
+    
+    figure, bar(retained)
+    ylabel('Percent of cells still in top 5%')
+    xlabel('Oscillation')
+        saveas(gcf, [fileloc 'Highphasebar.png'])
+
+   
 
     
     
