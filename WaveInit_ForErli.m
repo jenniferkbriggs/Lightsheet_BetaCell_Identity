@@ -3,8 +3,15 @@
 %Input: calcium wave form
 %Output: time of phase difference in ms
 
+clear all
+close all
+clc
+
+fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/')
+filename = 'F03 10G'
+fullfile = [fileloc filename]
 %Here we load the file
-    calcium = readmatrix('Erli_calcium.csv');%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv
+    calcium = readmatrix([fullfile '_Plot.csv']);%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv
     calcium(1:3,:) = []; %the CSV you have has the first 3 rows as NAN so we remove them
     time = calcium(:,1);   %time is in the first column so pull this out;
     calcium(:,1) = [];     %remove the time so now 'calcium' only has calcium intensity
@@ -12,7 +19,7 @@
 
     disp("Resize the figure and then click continue after you are happy with it")
     keyboard
-    Locations = readmatrix('Erli_location.csv');
+    Locations = readmatrix([fullfile ' pos_Detailed.csv']);
     
 %There are a few ways you can look at this wave form - either look at the
 %whole thing or look at a single oscillation. Here we define what area we
@@ -53,24 +60,23 @@
     %reflection on the staining rather than the actual cell's properties
     cashort = [];
 
+        
+          
+   for i = 1:length(end_indx)
+    % run phase analysis for each oscillation
+    cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];,...
+       % calcium_demeaned(start_indx(2):end_indx(2),:);...
+       % calcium_demeaned(start_indx(3):end_indx(3),:);...
+       % calcium_demeaned(start_indx(4):end_indx(4),:);...
+       % calcium_demeaned(start_indx(5):end_indx(5),:)];
     
-    % tack together oscillations
-   cashort =  [calcium_demeaned(start_indx(1):end_indx(1),:);,...
-        calcium_demeaned(start_indx(2):end_indx(2),:);...
-        calcium_demeaned(start_indx(3):end_indx(3),:);...
-        calcium_demeaned(start_indx(4):end_indx(4),:);...
-        calcium_demeaned(start_indx(5):end_indx(5),:)];
-    
-       
-    
-    step = .0005; %this gives how much to interpolate by
+ 
+    step = .01; %this gives how much to interpolate by
     xq = 1:step:size(cashort,1)+1;
     vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
     %vq2 = spline(1:size(cashort,1),cashort',xq);
     
     timeunits = mean(diff(time))*step*1000; %ms
-
-    
     numcells=size(cashort,2);
 
     calciumT = (vq1);                           % new calcium time course
@@ -82,8 +88,9 @@
 
     % 3. OBTAINING CROSS-CORRELATION OF THE REFERENCE SIGNAL (MEANISLET) WITH EACH INDIVIDUAL CELL
     tic
+    st = size(calciumT,1);
     for j=1:numcells % itterative index for cells
-       [c(:,j)]=xcov(calciumT(:,j),MeanIslet,'coeff');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
+       [c(:,j)]=xcov(calciumT(round(st/5):round(4*st/5),j),MeanIslet,'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
     end
     toc
 
@@ -91,8 +98,8 @@
     clear c
 
    % 4. PLOTTING SIGNAL, XCOV, AND OUTPUTTING MAX XCOV AND CORRESPONDING TIME LAG
-    newmaxCLvec = maxCL-mean(maxCL);
-    newmaxCLvec = newmaxCLvec/timeunits; %outputs phase difference in ms
+    newmaxCLvec_init = maxCL-mean(maxCL);
+    newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms
 
 
     %this is where you get the final output. phasevecsort gives you the
@@ -100,24 +107,65 @@
     %cells_sorted is what you are really interested in. This gives the cell
     %index in order from high phase (start earlier) to low
     %phase (start later)
-    [phasevecsort, cells_sorted] = sort(newmaxCLvec); 
+    [phasevecsort_init, cells_sortedinit] = sort(newmaxCLvec(i,:)); 
+    cells_sorted(i,:)= cells_sortedinit;
+    phasevecsort(i,:) = phasevecsort_init;
     finalphase = newmaxCLvec;
     
+   end
     
+   %% analyze the trajectory of cells
+   for i = 1:numcells %identify the ranking for each cell in each oscillation
+       [r, c] = find(cells_sorted' == i);
+       ranking(:,i)  = 1-r./numcells; %If 1, first to depolarize
+   end
+   
+   xvalues = {'First', 'Second','Third','Fourth','Fifth'};
+   yvalues = sprintfc('%d',[1:(numcells)]);
+   figure, fig1 = heatmap(xvalues, yvalues, ranking')
+   ydisplayvalues = sprintfc('%d',[1:(numcells)]);
+  ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(3:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(4:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(5:10:length(ydisplayvalues)) = {''};
+      ydisplayvalues(6:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(7:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(8:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(9:10:length(ydisplayvalues)) = {''};
+
+   ax = gca;
+   ax.YDisplayLabels = ydisplayvalues;
+   colormap('parula')
+
+   ylabel('Cell Number')
+   xlabel('Oscillation Number')
+   
+   saveas(gcf, [fileloc 'HeatMap.png'])
     
+  
     
-    
-    
-    
-    %find the average phase for all oscillations
+    %% find the average phase for all oscillations
     allphase = mean(finalphase);
     
-     figure, plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
-     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
-    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
+     figure,
+     for i = 1:5
+     nexttile
+     plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(i,1:4)), 'linewidth',1, 'color', 'blue')
+    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(i,end-3:end)), 'linewidth',1, 'color', 'red')
+    xline(time(start_indx(i))), xline(time(end_indx(i)))
+    title(['Oscillation Number ' num2str(i)])
+    axg.data(i) = gca
     legend([line1(1), line2(1)], {'High Phase','Low Phase'})
+     end
+     
+        saveas(gcf, [fileloc 'OscillationsWPhase.png'])
+        saveas(gcf, [fileloc 'OscillationsWPhase.mat'])
 
-    
+     
+     
+     linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
     X = Locations(:,1);
     Y = Locations(:,2);
     Z = Locations(:,3);
@@ -125,6 +173,35 @@
     colormap hot
     h = colorbar
     set(gca, 'visible', 'off')
+    
+    %% Calculate the number of high phase cells retained:
+    
+    %get top 5% of high phase cells
+    top5 = round(numcells*.05);
+    %first plot 'trajectory of top 5% of cells')
+    topcells = cells_sorted(1,1:top5)
+    bottomcells = cells_sorted(1,end-top5+1:end);
+    
+    figure, plot(ranking(:, topcells),'k', 'linewidth',4)
+    hold on, plot(ranking(:, bottomcells), 'b:','linewidth',3)
+    
+    %make legend
+    ax =gca;
+    axc = ax.Children;
+    l1 = axc(end);
+    l2 = axc(1);
+    
+    legend([l1, l2], '5% Highest Phase','5% Lowest Phase') 
+    
+    
+    ylabel('Phase (1 = first to depolarize)')
+    xlabel('Oscillation')
+    saveas(gcf, [fileloc 'Highphasetraj.png'])
+
+    
+    
+    
+  
     
     %% If you want to watch the calcium oscillations:
     figure, nexttile, 
