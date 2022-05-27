@@ -29,26 +29,45 @@ fullfile = [fileloc filename]
 %whole thing or look at a single oscillation. Here we define what area we
 %are look. Generally, if you are looking for a wave initiator, you'll want
 %to look at just the beginning of an oscillation
-    title('Select the beginning of 5 oscillations')
+    title('Select approximate peak of  5 oscillations')
     starttime =  ginput(5)  %here you put the time in seconds that you want to start the analysis
     starttime = starttime(:,1);
-    hold on, xline(starttime)
-    title('Select the peak of those oscillations')
-    endtime =    ginput(5)  %put the end time here
-    endtime = endtime(:,1);
-    xline(starttime, 'label','This is where we start')
-    xline(endtime, 'label','This is where we end')
-
-
+%     hold on, xline(starttime)
+%     title('Select the peak of those oscillations')
+    %endtime =    ginput(5)  %put the end time here
+    %endtime = endtime(:,1);
+    for i = 1:5
+    xline(starttime(i), 'label',['start: ' num2str(i)])
+%    xline(endtime(i), 'label',['end: ' num2str(i)])
+    end
 %% Start phase analysis MATLAB works by indexing the datapoints. Therefore, we
     %must find what index the time that you want to look at is.
+% 
+meancal = mean(calcium');
+meandiff = diff(meancal);
 
-    for i = 1:5
+for i = 1:5
+    %select area around peak:
     start_indx_f = find(abs(time-starttime(i))<0.5); 
-    start_indx(i) = start_indx_f(1);
-    end_indx_f = find(abs(time-endtime(i))<0.5);
-    end_indx(i) = end_indx_f(1);
-    end
+
+    st = start_indx_f(1) - 300;
+    ed = start_indx_f(1) + 200;
+    
+    meandiff2 = meandiff;
+    meandiff2([1:st]) = 0;
+    meandiff2([ed:end]) = 0;
+    
+    start_indx(i) = find(meandiff2 == max(meandiff2(st:ed)))-50;
+    end_indx(i) = find(meancal == max(meancal(st:ed)))-25;
+end
+    
+
+%     for i = 1:5
+%     start_indx_f = find(abs(time-starttime(i))<0.5); 
+%     start_indx(i) = start_indx_f(1);
+%     end_indx_f = find(abs(time-endtime(i))<0.5);
+%     end_indx(i) = end_indx_f(1);
+%     end
     
     %maybe we should smooth the data;
    % calcium = smoothdata(calcium, 1, 'movmedian',3);
@@ -59,7 +78,8 @@ fullfile = [fileloc filename]
 %in order to make the analysis more accurate, we linearly interpolate between the
 %points to artificially increase resolution. We may need to play with this
 %as the outputs are not getting very good differentiation between phases.
-    calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
+   % calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
+    calcium_demeaned = calcium;
     %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
     cashort = [];
@@ -68,12 +88,8 @@ fullfile = [fileloc filename]
           
    for i = 1:length(end_indx)
     % run phase analysis for each oscillation
-    cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];,...
-       % calcium_demeaned(start_indx(2):end_indx(2),:);...
-       % calcium_demeaned(start_indx(3):end_indx(3),:);...
-       % calcium_demeaned(start_indx(4):end_indx(4),:);...
-       % calcium_demeaned(start_indx(5):end_indx(5),:)];
-    
+    cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];
+    cashort = (cashort-min(cashort))./(max(cashort)-min(cashort));
  
     step = .01; %this gives how much to interpolate by
     xq = 1:step:size(cashort,1)+1;
@@ -94,7 +110,7 @@ fullfile = [fileloc filename]
     tic
     st = size(calciumT,1);
     for j=1:numcells % itterative index for cells
-       [c(:,j)]=xcov(calciumT(round(st/5):round(4*st/5),j),MeanIslet,'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
+       [c(:,j)]=xcov(calciumT(round(st/5):round(4*st/5),j), MeanIslet, 'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
     end
     toc
 
@@ -145,12 +161,15 @@ fullfile = [fileloc filename]
    ylabel('Cell Number')
    xlabel('Oscillation Number')
    
-   saveas(gcf, [fileloc 'HeatMap.png'])
+   %saveas(gcf, [fileloc 'HeatMap.png'])
     
   
     
     %% find the average phase for all oscillations
     allphase = mean(finalphase);
+    
+   %calcium_demeaned = (calcium_demeaned - min(calcium_demeaned))./(range(calcium_demeaned));
+
     
      figure,
      for i = 1:5
@@ -163,25 +182,28 @@ fullfile = [fileloc filename]
     axg.data(i) = gca
     legend([line1(1), line2(1)], {'High Phase','Low Phase'})
      end
-          linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
+        %  linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
 
-        saveas(gcf, [fileloc 'OscillationsWPhase.png'])
-        saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
+   %     saveas(gcf, [fileloc 'OscillationsWPhase.png'])
+   %     saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
 
      
-     
-    X = Locations(:,1);
-    Y = Locations(:,2);
-    Z = Locations(:,3);
-    figure, scatter3(X,Y,Z,100, newmaxCLvec/max(newmaxCLvec), 'filled')
-    colormap hot
-    h = colorbar
-    set(gca, 'visible', 'off')
-    
+        
+%     X = Locations(:,1);
+%     Y = Locations(:,2);
+%     Z = Locations(:,3);
+%     figure,
+%     for i = 1:5
+%      nexttile,
+%      scatter3(X,Y,Z,100, newmaxCLvec(i,:)/max(newmaxCLvec(i,:)), 'filled')
+%     colormap hot
+%     h = colorbar
+%     set(gca, 'visible', 'off')
+%     end
     %% Calculate the number of high phase cells retained:
     
     %get top 5% of high phase cells
-    top5 = round(numcells*.05);
+    top5 = round(numcells*.1);
     %first plot 'trajectory of top 5% of cells')
     topcells = cells_sorted(1,1:top5)
     bottomcells = cells_sorted(1,end-top5+1:end);
@@ -210,7 +232,7 @@ fullfile = [fileloc filename]
     figure, bar(retained)
     ylabel('Percent of cells still in top 5%')
     xlabel('Oscillation')
-        saveas(gcf, [fileloc 'Highphasebar.png'])
+      %  saveas(gcf, [fileloc 'Highphasebar.png'])
 
    
 
