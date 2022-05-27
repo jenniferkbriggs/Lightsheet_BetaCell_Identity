@@ -218,12 +218,18 @@ figure, plot(meancal), xline(start_indx, 'label','start'), xline(end_indx, 'labe
     
     %find percent of cells still within the top 5
     for i = 1:wavenum
-    retained(i) = length(intersect(cells_sorted(i,1:top5), topcells))./top5
+        for j = 1:wavenum
+    retained(i,j) = length(intersect(cells_sorted(i,1:top5), cells_sorted(j,1:top5)))./top5
+        end
     end
     
-    figure, bar(retained)
+    figure, 
+    for i = 1:wavenum
+        nexttile, bar(retained(i,:))
     ylabel('Percent of cells still in top 5%')
     xlabel('Oscillation')
+    title(['Oscillation: ' num2str(i)])
+    end
       %  saveas(gcf, [fileloc 'Highphasebar.png'])
 
    
