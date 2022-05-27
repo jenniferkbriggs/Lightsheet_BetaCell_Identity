@@ -29,16 +29,13 @@ fullfile = [fileloc filename]
 %whole thing or look at a single oscillation. Here we define what area we
 %are look. Generally, if you are looking for a wave initiator, you'll want
 %to look at just the beginning of an oscillation
-    title('Select approximate peak of  5 oscillations')
-    starttime =  ginput(5)  %here you put the time in seconds that you want to start the analysis
+    title('Select approximate peak of interesting oscillations')
+    starttime =  ginput()  %here you put the time in seconds that you want to start the analysis
     starttime = starttime(:,1);
-%     hold on, xline(starttime)
-%     title('Select the peak of those oscillations')
-    %endtime =    ginput(5)  %put the end time here
-    %endtime = endtime(:,1);
-    for i = 1:5
-    xline(starttime(i), 'label',['start: ' num2str(i)])
-%    xline(endtime(i), 'label',['end: ' num2str(i)])
+%   
+wavenum = length(starttime);
+    for i = 1:wavenum
+    xline(starttime(i), 'label',['wavenumber: ' num2str(i)])
     end
 %% Start phase analysis MATLAB works by indexing the datapoints. Therefore, we
     %must find what index the time that you want to look at is.
@@ -46,7 +43,7 @@ fullfile = [fileloc filename]
 meancal = mean(calcium');
 meandiff = diff(meancal);
 
-for i = 1:5
+for i = 1:wavenum
     %select area around peak:
     start_indx_f = find(abs(time-starttime(i))<0.5); 
 
@@ -57,20 +54,15 @@ for i = 1:5
     meandiff2([1:st]) = 0;
     meandiff2([ed:end]) = 0;
     
-    start_indx(i) = find(meandiff2 == max(meandiff2(st:ed)))-50;
-    end_indx(i) = find(meancal == max(meancal(st:ed)))-25;
+    stinx = find(meandiff2 == max(meandiff2(st:ed)))-50;
+    start_indx(i) = stinx(1);
+    
+    
+    edinx = find(meancal == max(meancal(st:ed)))-25;
+    end_indx(i) = edinx(1);
 end
     
-
-%     for i = 1:5
-%     start_indx_f = find(abs(time-starttime(i))<0.5); 
-%     start_indx(i) = start_indx_f(1);
-%     end_indx_f = find(abs(time-endtime(i))<0.5);
-%     end_indx(i) = end_indx_f(1);
-%     end
-    
-    %maybe we should smooth the data;
-   % calcium = smoothdata(calcium, 1, 'movmedian',3);
+figure, plot(meancal), xline(start_indx, 'label','start'), xline(end_indx, 'label', 'end')
 
 %% Wave origin analysis
     
@@ -140,7 +132,7 @@ end
        ranking(:,i)  = 1-r./numcells; %If 1, first to depolarize
    end
    
-   xvalues = {'First', 'Second','Third','Fourth','Fifth'};
+   xvalues = [1:wavenum];
    yvalues = sprintfc('%d',[1:(numcells)]);
    figure, fig1 = heatmap(xvalues, yvalues, ranking')
    ydisplayvalues = sprintfc('%d',[1:(numcells)]);
@@ -172,7 +164,7 @@ end
 
     
      figure,
-     for i = 1:5
+     for i = 1:wavenum
      nexttile
      plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
      hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(i,1:4)), 'linewidth',1, 'color', 'blue')
@@ -225,7 +217,7 @@ end
     saveas(gcf, [fileloc 'Highphasetraj.png'])
     
     %find percent of cells still within the top 5
-    for i = 1:5
+    for i = 1:wavenum
     retained(i) = length(intersect(cells_sorted(i,1:top5), topcells))./top5
     end
     
