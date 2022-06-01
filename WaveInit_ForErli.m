@@ -43,26 +43,56 @@ wavenum = length(starttime);
 meancal = mean(calcium');
 meandiff = diff(meancal);
 
+figure, plot(meancal)
+
 for i = 1:wavenum
     %select area around peak:
     start_indx_f = find(abs(time-starttime(i))<0.5); 
+    
+    %find time of activity
+    largearea = meancal(start_indx_f(1)-200:start_indx_f(1)+200);
+    timeon = find((largearea - min(largearea))/(range(largearea)) > (0.3));
+    timeon2 = find(diff(timeon) > 2);
 
-    st = start_indx_f(1) - 300;
-    ed = start_indx_f(1) + 200;
+    if ~isempty(timeon2)
+        for j = 1:length(timeon2)
+            if timeon2(j) < length(timeon)/2
+                timeon = timeon(timeon2(j):end);
+            else
+                timeon = timeon(1:timeon2(j));
+            end
+        end
+    end
+    period = timeon(end)-timeon(1);
+    
+    st = start_indx_f(1) - round(2*period/3);
+    ed = start_indx_f(1) + round(period/4);
     
     meandiff2 = meandiff;
     meandiff2([1:st]) = 0;
     meandiff2([ed:end]) = 0;
     
-    stinx = find(meandiff2 == max(meandiff2(st:ed)))-50;
+    stinx = find(meandiff2 == max(meandiff2(st:ed)));
+    stinx = stinx(stinx > st & stinx < ed)-round(period/4);
+
     start_indx(i) = stinx(1);
     
     
-    edinx = find(meancal == max(meancal(st:ed)))-25;
+    [pks,locs] = findpeaks((meancal(st:ed)-min(meancal(st:ed)))/range(meancal(st:ed)), 'MinPeakDist',100, 'MinPeakProminence',.2);
+    if isempty(locs)
+         [pks,locs] = max(meancal(st:ed));
+    end
+    [~,minpkloc] = min(abs(start_indx_f(1)-locs));
+    edinx = st+locs(minpkloc);
+    edinx = edinx(edinx > st & edinx < ed);
     end_indx(i) = edinx(1);
+    
+    hold on, xline(start_indx, 'label',['start: ' num2str(i)]), xline(end_indx, 'label', ['end:' num2str(i)])
+    
+    keyboard
+
 end
     
-figure, plot(meancal), xline(start_indx, 'label','start'), xline(end_indx, 'label', 'end')
 
 %% Wave origin analysis
     
@@ -70,7 +100,6 @@ figure, plot(meancal), xline(start_indx, 'label','start'), xline(end_indx, 'labe
 %in order to make the analysis more accurate, we linearly interpolate between the
 %points to artificially increase resolution. We may need to play with this
 %as the outputs are not getting very good differentiation between phases.
-   % calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
     calcium_demeaned = calcium;
     %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
@@ -81,6 +110,8 @@ figure, plot(meancal), xline(start_indx, 'label','start'), xline(end_indx, 'labe
    for i = 1:length(end_indx)
     % run phase analysis for each oscillation
     cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];
+    
+    %demean
     cashort = (cashort-min(cashort))./(max(cashort)-min(cashort));
  
     step = .01; %this gives how much to interpolate by
