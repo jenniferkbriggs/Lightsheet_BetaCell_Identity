@@ -84,12 +84,12 @@ for i = 1:wavenum
     end
     [~,minpkloc] = min(abs(start_indx_f(1)-locs));
     edinx = st+locs(minpkloc);
-    edinx = edinx(edinx > st & edinx < ed);
+    edinx = edinx(edinx > st & edinx < ed+100);
     end_indx(i) = edinx(1);
     
     hold on, xline(start_indx, 'label',['start: ' num2str(i)]), xline(end_indx, 'label', ['end:' num2str(i)])
     
-    keyboard
+    
 
 end
     
@@ -191,7 +191,7 @@ end
     %% find the average phase for all oscillations
     allphase = mean(finalphase);
     
-   %calcium_demeaned = (calcium_demeaned - min(calcium_demeaned))./(range(calcium_demeaned));
+   calcium_demeaned = (calcium_demeaned - min(calcium_demeaned))./(range(calcium_demeaned));
 
     
      figure,
@@ -212,17 +212,17 @@ end
 
      
         
-%     X = Locations(:,1);
-%     Y = Locations(:,2);
-%     Z = Locations(:,3);
-%     figure,
-%     for i = 1:5
-%      nexttile,
-%      scatter3(X,Y,Z,100, newmaxCLvec(i,:)/max(newmaxCLvec(i,:)), 'filled')
-%     colormap hot
-%     h = colorbar
-%     set(gca, 'visible', 'off')
-%     end
+    X = Locations(:,1);
+    Y = Locations(:,2);
+    Z = Locations(:,3);
+    figure,
+    for i = 1:5
+     nexttile,
+     scatter3(X,Y,Z,100, newmaxCLvec(i,:)/max(newmaxCLvec(i,:)), 'filled')
+    colormap hot
+    h = colorbar
+    set(gca, 'visible', 'off')
+    end
     %% Calculate the number of high phase cells retained:
     
     %get top 5% of high phase cells
@@ -240,7 +240,7 @@ end
     l1 = axc(end);
     l2 = axc(1);
     
-    legend([l1, l2], '5% Highest Phase','5% Lowest Phase') 
+    legend([l1, l2], '10% Highest Phase','10% Lowest Phase') 
     
     
     ylabel('Phase (1 = first to depolarize)')
@@ -256,8 +256,8 @@ end
     
     figure, 
     for i = 1:wavenum
-        nexttile, bar(retained(i,:))
-    ylabel('Percent of cells still in top 5%')
+   nexttile, bar(retained(i,:))
+    ylabel('Percent of cells still in top 10%')
     xlabel('Oscillation')
     title(['Oscillation: ' num2str(i)])
     end
