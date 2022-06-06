@@ -24,6 +24,7 @@ fullfile = [fileloc filename]
     disp("Resize the figure and then click continue after you are happy with it")
     keyboard
     Locations = readmatrix([fullfile ' pos_Detailed.csv']);
+    Locations = Locations(:,1:3);
     
 %There are a few ways you can look at this wave form - either look at the
 %whole thing or look at a single oscillation. Here we define what area we
@@ -156,13 +157,87 @@ end
     finalphase = newmaxCLvec;
     
    end
-    
-   %% analyze the trajectory of cells
+   
+   %rank cells within oscillation
    for i = 1:numcells %identify the ranking for each cell in each oscillation
        [r, c] = find(cells_sorted' == i);
        ranking(:,i)  = 1-r./numcells; %If 1, first to depolarize
    end
    
+   %% Analysis: 
+   
+   percent_to_analyze = 0.05
+   
+   % look at the location of high phase and low phase cells:
+   for i = 1:wavenum
+     [high_dist, low_dist, pos_new, highphasecenter(i,:), lowphasecenter(i,:), V, D]  = locmap(Locations, ranking(i,:), percent_to_analyze); %can play with last number, this 
+      dist_from_high(:,i) = high_dist;
+      dist_from_low(:,i) = low_dist;
+      loc_along_wave(:,i) = pos_new;
+      eigenvec(:,i) = V(:,1);
+      eigenval(i) = D(1,1);
+   end
+   
+   
+%visualize iset
+figure, scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 40, [0.8, 0.8, 0.8])
+ax = gca
+ax.GridLineStyle = 'none'
+oscillationcolor = jet(wavenum);
+hold on, s= scatter3(highphasecenter(:,1), highphasecenter(:,2), highphasecenter(:,3), 100,oscillationcolor, '*')
+hold on, e=scatter3(lowphasecenter(:,1), lowphasecenter(:,2), lowphasecenter(:,3), 100, oscillationcolor, 'filled')
+h = colorbar;
+ylabel(h, 'Oscillation Number')
+h.Ticks = [0:1/(wavenum-1):1]
+h.TickLabels = sprintfc('%d',[1:wavenum])
+legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
+
+%plotting things:
+   xvalues = [1:wavenum];
+   yvalues = sprintfc('%d',[1:(numcells)]);
+
+   ydisplayvalues = sprintfc('%d',[1:(numcells)]);
+  ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(3:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(4:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(5:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(6:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(7:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(8:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(9:10:length(ydisplayvalues)) = {''};
+
+   
+
+    %disp: 
+   figure,  heatmap(xvalues, yvalues, dist_from_high)
+   ax = gca;
+   ax.YDisplayLabels = ydisplayvalues;
+   colormap('parula')
+   ylabel('Cell Number')
+   xlabel('Oscillation Number')
+    title('Cell distance (normalized by diameter) from center of highest phase')
+
+   figure,  heatmap(xvalues, yvalues, dist_from_low)
+   ax = gca;
+   ax.YDisplayLabels = ydisplayvalues;
+   colormap('parula')
+   ylabel('Cell Number')
+   xlabel('Oscillation Number')
+    title('Cell distance (normalized by diameter) from center of lowest phase')
+   
+
+   figure,  heatmap(xvalues, yvalues, loc_along_wave)
+   ax = gca;
+   ax.YDisplayLabels = ydisplayvalues;
+   colormap('parula')
+   ylabel('Cell Number')
+   xlabel('Oscillation Number')
+    title('Cell location along wave')
+   
+   
+%% analyze the trajectory of cells
+
    xvalues = [1:wavenum];
    yvalues = sprintfc('%d',[1:(numcells)]);
    figure, fig1 = heatmap(xvalues, yvalues, ranking')
