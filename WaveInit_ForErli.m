@@ -6,6 +6,9 @@
 clear all
 close all
 clc
+
+w = warning('off','all');
+
 try
 addpath('/Users/brigjenn/Documents/GitHub/UniversalCode')
 end
@@ -22,7 +25,7 @@ set(0,'defaultAxesFontSize',16)
 
 fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ106/')
 cd(fileloc)
-files = dir('*pos*')
+files = dir('.*pos*')
 for fi = 1:length(files)
 filename = files(fi).name(3:9)
 fullfile = [fileloc filename]
@@ -34,7 +37,7 @@ fullfile = [fileloc filename]
     figure, plot(time,calcium) %plot calcium
 
     disp("Resize the figure and then click continue after you are happy with it")
-    keyboard
+    %keyboard
     Locations = readmatrix([fullfile ' pos_Detailed.csv']);
     Locations = Locations(:,1:3);
     
@@ -43,13 +46,15 @@ fullfile = [fileloc filename]
 %are look. Generally, if you are looking for a wave initiator, you'll want
 %to look at just the beginning of an oscillation
 
+calcium = smoothdata(calcium, 1, 'movmean',20);
 if auto ==0
     title('Select approximate peak of interesting oscillations')
     starttime =  ginput()  %here you put the time in seconds that you want to start the analysis
     starttime = starttime(:,1);
 else   
-    [~, starttime] = findpeaks((mean(calcium')-min(mean(calcium')))./range(mean(calcium')), time, 'MinPeakProminence', .1);
-
+    cal = (mean(calcium')-min(mean(calcium')))./range(mean(calcium'));
+    [~, starttime] = findpeaks(cal, time, 'MinPeakProminence', .05, 'MinPeakDist',60);
+    starttime(starttime < 200) = [];
 end
 
 wavenum = length(starttime);
@@ -59,7 +64,9 @@ wavenum = length(starttime);
     end
     
     title('Click continue or type dbcont if happy')
-    keyboard
+    
+%keyboard
+    title(filename)
 %% Start phase analysis MATLAB works by indexing the datapoints. Therefore, we
     %must find what index the time that you want to look at is.
 % 
@@ -73,10 +80,12 @@ for i = 1:wavenum
     start_indx_f = find(abs(time-starttime(i))<0.5); 
     
     %find time of activity
-    if start_indx_f(1)+200 < length(meancal)
-    largearea = meancal(start_indx_f(1)-200:start_indx_f(1)+200);
-    else
-            largearea = meancal(start_indx_f(1)-200:end);
+    if start_indx_f(1)-200 < 1
+        largearea = meancal(1:start_indx_f(1)+200);
+    elseif start_indx_f(end)+200 > length(meancal)    
+        largearea = meancal(start_indx_f(1)-200:end);
+    else   
+        largearea = meancal(start_indx_f(1)-200:start_indx_f(1)+200);
     end
     timeon = find((largearea - min(largearea))/(range(largearea)) > (0.3));
     timeon2 = find(diff(timeon) > 2);
@@ -86,13 +95,20 @@ for i = 1:wavenum
             if timeon2(j) < length(timeon)/2
                 timeon = timeon(timeon2(j)+1:end);
             else
+                try
                 timeon = timeon(1:timeon2(j));
+                catch
+                    timeon = timeon(1:end-1);
+                end
             end
         end
     end
     period = timeon(end)-timeon(1);
     
     st = start_indx_f(1) - round(2*period/3);
+    if st < 1
+        st = 1;
+    end
     ed = start_indx_f(1) + round(period/4);
     
     meandiff2 = meandiff;
@@ -105,7 +121,7 @@ for i = 1:wavenum
     start_indx(i) = stinx(1);
     
   
-    [pks,locs] = findpeaks((meancal(st:ed)-min(meancal(st:ed)))/range(meancal(st:ed)), 'MinPeakDist',50, 'MinPeakProminence',.2);
+    [pks,locs] = findpeaks((meancal(st:ed)-min(meancal(st:ed)))/range(meancal(st:ed)), 'MinPeakDist',10, 'MinPeakProminence',.2);
     if isempty(locs)
          [pks,locs] = max(meancal(st:ed));
     end
@@ -270,7 +286,7 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
   
    [~, ranking_sort] = sort(mean(ranking,1));
 
-   figure, fig1 = heatmap(xvalues, yvalues, ranking(:,ranking_sort)')
+   figure, fig1 = heatmap(xvalues, yvalues, ranking(:,ranking_sort)');
    ydisplayvalues = sprintfc('%d',[1:(numcells)]);
   ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
    ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
@@ -326,7 +342,7 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
      nexttile,
      scatter3(X,Y,Z,100, newmaxCLvec(i,:)/max(newmaxCLvec(i,:)), 'filled')
     colormap hot
-    h = colorbar
+    h = colorbar;
     set(gca, 'visible', 'off')
     title(['Oscillation number ' num2str(i)])
     end
