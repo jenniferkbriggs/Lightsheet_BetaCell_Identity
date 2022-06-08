@@ -1,4 +1,4 @@
-function [high_dist, low_dist, pos_new, highphasecenter, lowphasecenter, V, D] = locmap(pos, phase, per)
+function [high_dist, low_dist, pos_new, highphasecenter, lowphasecenter, V, D] = locmap(pos, phase, per, opts)
 
 %this function is made for 3D analysis of islet data from Erli Jin (Merrins
 %Lab) with the goal of understanding the locality of phase initators. 
@@ -8,6 +8,8 @@ function [high_dist, low_dist, pos_new, highphasecenter, lowphasecenter, V, D] =
 %phase =  ranking of cells by phase--- 1 x numcell array of phase from -1 to 1 for each cell
 
 %per = percentage (0.001 - 0.5) of cells to include in high/low phase
+%opts = stucture: figs = 0 for no figures
+
 
 % high phase: 1) center of gravity location, 2) spread of center of gravity
 highphase = find(phase>=1-per);
@@ -38,19 +40,20 @@ isletcenter = mean(pos);
 [V,D] = eigs([lowphasecenter;isletcenter; highphasecenter]);
 
 pos_new = pos*V(:,1); %gives cell's position along the line of phase difference
-%pos_new = (pos_new-min(pos_new))/range(pos_new);
+pos_new = (pos_new-min(pos_new))/range(pos_new);
 
 
 %plot
 d = jet(length(pos)); %make colormap
 [~, ran] = sort(phase); %sort colormap
 
+if opts.figs
 figure, scatter([1:length(pos)], pos_new, 50, d(ran,:), 'filled')
 c = colorbar
 ylabel(c, 'Phase')
 xlabel('Cell Number')
 ylabel('Location along wave')
-
+end
 
 % direction of the wave -> distance from the center of the islet with +
 % being begining of wave and - being end of wave. 
