@@ -23,7 +23,7 @@ end
 set(0, 'defaultFigureUnits','normalized', 'defaultFigurePosition', [0.4375 0.1100 0.4675 0.5671]);
 set(0,'defaultAxesFontSize',16)
 
-fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ106/')
+fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ112/')
 cd(fileloc)
 files = dir('.*pos*')
 for fi = 1:length(files)
@@ -387,48 +387,48 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
       %  saveas(gcf, [fileloc 'Highphasebar.png'])
       clearvars -except   percent_to_analyze auto fileloc files
     try
-   saveAllFigsToPPT([fullfile 'PhaseAnalysis'])
+   saveAllFigsToPPT([fileloc fileloc(end-3:end-1) 'PhaseAnalysis'])
   end
 end
-    
-    
-    %% If you want to watch the calcium oscillations:
-    figure, nexttile, 
-    
-    calcium_av= movmean(calcium_demeaned, 5);
-    colormap 
- 
-    nexttile(2)
-    plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
-    hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
-    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
-    xline(1, 'linewidth', 4)
-
-    xwaveinit = X(cells_sorted(1:5));
-    ywaveinit = Y(cells_sorted(1:5));
-    zwaveinit = Z(cells_sorted(1:5));
-    
-    my = mean(ywaveinit);
-    mx = mean(xwaveinit);
-    mz = mean(zwaveinit);
-    
-    
+%     
+%     
+%     %% If you want to watch the calcium oscillations:
+%     figure, nexttile, 
+%     
+%     calcium_av= movmean(calcium_demeaned, 5);
+%     colormap 
+%  
+%     nexttile(2)
+%     plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+%     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
+%     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
+%     xline(1, 'linewidth', 4)
 % 
-%     for i = 1:5:length(calcium);
-% 
-%        nexttile(1)
-%        scatter3(X,Y,Z,100, calcium_demeaned(i,:), 'filled')
-%        %annotation('textarrow', mx,my,'String', 'Wave Initiators')
-%        text(mx+50,my-50,mz, 'Wave Initiators', 'FontSize',20)
-%        colorbar('south','axislocation', 'in')
-%        caxis manual
-%        caxis([0, 1])
-%        set(gca, 'visible', 'off')
-% 
-%        nexttile(2)
-%         ax = gca
-%         axc = ax.Children
-%         axc(1)
+%     xwaveinit = X(cells_sorted(1:5));
+%     ywaveinit = Y(cells_sorted(1:5));
+%     zwaveinit = Z(cells_sorted(1:5));
+%     
+%     my = mean(ywaveinit);
+%     mx = mean(xwaveinit);
+%     mz = mean(zwaveinit);
+%     
+%     
+% % 
+% %     for i = 1:5:length(calcium);
+% % 
+% %        nexttile(1)
+% %        scatter3(X,Y,Z,100, calcium_demeaned(i,:), 'filled')
+% %        %annotation('textarrow', mx,my,'String', 'Wave Initiators')
+% %        text(mx+50,my-50,mz, 'Wave Initiators', 'FontSize',20)
+% %        colorbar('south','axislocation', 'in')
+% %        caxis manual
+% %        caxis([0, 1])
+% %        set(gca, 'visible', 'off')
+% % 
+% %        nexttile(2)
+% %         ax = gca
+% %         axc = ax.Children
+% %         axc(1)
 %         axc(1).Value = i
 %         
 %        drawnow
