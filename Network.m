@@ -2,11 +2,18 @@
 %code for network analysis of 3D data
 % Jennifer Briggs 06/02/2022
 
+
+close all 
+clear all
+clc
 %changing defaults
 set(0, 'defaultFigureUnits','normalized', 'defaultFigurePosition', [0.4375 0.1100 0.4675 0.5671]);
 set(0,'defaultAxesFontSize',16)
 
-fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/')
+addpath('~/Documents/GitHub/Functional_and_Structural_Networks')
+
+
+fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ106/')
 filename = 'F03 10G'
 fullfile = [fileloc filename]
 %Here we load the files
@@ -15,24 +22,32 @@ fullfile = [fileloc filename]
     time = calcium(:,1);   %time is in the first column so pull this out;
     calcium(:,1) = [];     %remove the time so now 'calcium' only has calcium intensity
     Locations = readmatrix([fullfile ' pos_Detailed.csv']);
+    Locations = Locations(:,1:3);
 
-
+    
+%find best threshold
+Threshold = findoptRth(calcium);
 %% Run Network Analysis
 
-Opts.printasSubplot = 1;
-Opts.Subplotnum = 1;
-Opts.figs = 0;
+Opts.printasSubplot = 0;
+Opts.Subplotnum = 0;
+Opts.figs = 1;
 Opts.multiseed = 0;
 Opts.multiseednum = 1;
 
-Threshold = 0.999; %will need to play with this
 
-[N, adj, kperc, histArrayPercShort, Rij] = links(calcium, Threshold,Opts,1); %%This is where the network is built
+
+
+[N, adj, kperc, histArrayPercShort, Rij] = links(calcium, 0.999,Opts,1); %%This is where the network is built
 [sorted, cellsor]= sort(N);
 
 
 %network analysis is performed
 [L, EGlob, CClosed, ELocClosed, COpen, ELocOpen, nopath]  = graphProperties(adj);
 
+G = graph(adj);
+figure, plot(G)
 
+Hubs = cellsor((sorted - min(sorted))/range(sorted)>.60);
 
+figure, plot(graph(sparse(adj)), 'Xdata',Locations(:,1), 'Ydata',Locations(:,2), 'Zdata',Locations(:,3),'NodeColor','k', 'MarkerSize',10)
