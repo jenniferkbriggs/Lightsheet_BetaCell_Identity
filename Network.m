@@ -14,7 +14,7 @@ addpath('~/Documents/GitHub/Functional_and_Structural_Networks')
 
 
 fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ106/')
-filename = 'F03 10G'
+filename = 'F08 10G'
 fullfile = [fileloc filename]
 %Here we load the files
     calcium = readmatrix([fullfile '_Plot.csv']);%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv

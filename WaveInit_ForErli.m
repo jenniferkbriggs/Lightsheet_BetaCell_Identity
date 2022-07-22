@@ -23,12 +23,14 @@ end
 set(0, 'defaultFigureUnits','normalized', 'defaultFigurePosition', [0.4375 0.1100 0.4675 0.5671]);
 set(0,'defaultAxesFontSize',16)
 
-fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/EJ112/')
-cd(fileloc)
+islettype = 'EJ106'
+
+fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/')
+cd([fileloc islettype])
 files = dir('.*pos*')
 for fi = 1:length(files)
 filename = files(fi).name(3:9)
-fullfile = [fileloc filename]
+fullfile = [fileloc islettype '/' filename]
 %Here we load the file
     calcium = readmatrix([fullfile '_Plot.csv']);%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv
     calcium(1:3,:) = []; %the CSV you have has the first 3 rows as NAN so we remove them
@@ -67,9 +69,9 @@ wavenum = length(starttime);
     
 %keyboard
     title(filename)
-%% Start phase analysis MATLAB works by indexing the datapoints. Therefore, we
-    %must find what index the time that you want to look at is.
-% 
+    
+%% Identify Oscillations
+
 meancal = mean(calcium');
 meandiff = diff(meancal);
 
@@ -131,14 +133,11 @@ for i = 1:wavenum
     end_indx(i) = round(edinx(1));
     
     hold on, xline(start_indx(i), 'label',['start: ' num2str(i)]), xline(end_indx(i), 'label', ['end:' num2str(i)])
-    
-    
-
 end
     
 
 %% Wave origin analysis
-    
+   
     
 %in order to make the analysis more accurate, we linearly interpolate between the
 %points to artificially increase resolution. We may need to play with this
@@ -147,7 +146,6 @@ end
     %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
     cashort = [];
-
         
           
    for i = 1:length(end_indx)
@@ -206,20 +204,47 @@ end
        ranking(:,i)  = 1-r./numcells; %If 1, first to depolarize
    end
    
-   %% Analysis: 
-   
+%% Analysis and visualization
+
+
    opts.figs = 0;
+   
+   figure(1)
+   %pka = input('What wave was the first pka applied?');
+
    % look at the location of high phase and low phase cells:
    for i = 1:wavenum
-     [high_dist, low_dist, pos_new, highphasecenter(i,:), lowphasecenter(i,:), V, D]  = locmap(Locations, ranking(i,:), percent_to_analyze, opts); %can play with last number, this 
-      dist_from_high(:,i) = high_dist;
-      dist_from_low(:,i) = low_dist;
-      loc_along_wave(:,i) = pos_new;
-      eigenvec(:,i) = V(:,1);
-      eigenval(i) = D(1,1);
+      [out]  = locmap(Locations, ranking(i,:), percent_to_analyze, opts); %can play with last number, this 
+      dist_from_high(:,i) = out.high_dist;
+      dist_from_low(:,i) = out.low_dist;
+      loc_along_wave(:,i) = out.pos_new;
+      eigenvec(:,i) = out.V(:,1);
+      eigenval(i) = out.D(1,1);
+      
+      highphasecenter(i,:) = out.highphasecenter;
+      highphasespread(i) = out.highphasespread';
+      
+      lowphasecenter(i,:) = out.lowphasecenter;
+      
+      cartspread(:,:,i) = out.cart_spread; %[radius, az, el]
+      cartloc(:,i) = out.cart_loc;
    end
    
    
+[az, el, r] = cart2sph(Locations(:,1), Locations(:,2), Locations(:,3));
+%How much does cartesian locations change with respect to islet
+cartloc_change = diff(cartloc,[],2)./[max(r); max(az); max(el)];
+
+figure, nexttile, plot(cartloc_change'), ylim([-1, 1]), xlabel('Difference Between Oscillation (n and n+1)'), ylabel('Percent change')
+%xline(pka+0.5, 'label','PKA application','fontsize',12)
+legend('Radius','\phi','\theta')
+
+nexttile, plot(cartloc(1,:)'), ylabel('Radius'), yyaxis right, plot(cartloc(2:3,:)')
+%xline(pka, 'label','PKA application','fontsize',12)
+xlabel('Oscillation'), ylabel('Angles')
+legend('Radius','\phi','\theta')
+saveas(gcf, ['Waveinitchange' filename '.fig'])
+
 %visualize iset
 figure, scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 40, [0.8, 0.8, 0.8])
 ax = gca
@@ -238,7 +263,7 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
    yvalues = sprintfc('%d',[1:(numcells)]);
 
    ydisplayvalues = sprintfc('%d',[1:(numcells)]);
-  ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
    ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
    ydisplayvalues(3:10:length(ydisplayvalues)) = {''};
    ydisplayvalues(4:10:length(ydisplayvalues)) = {''};
@@ -346,6 +371,8 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
     set(gca, 'visible', 'off')
     title(['Oscillation number ' num2str(i)])
     end
+    
+    
     %% Calculate the number of high phase cells retained:
     
     %get top 5% of high phase cells
@@ -385,9 +412,9 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
     title(['Oscillation: ' num2str(i)])
     end
       %  saveas(gcf, [fileloc 'Highphasebar.png'])
-      clearvars -except   percent_to_analyze auto fileloc files
+      clearvars -except   percent_to_analyze auto fileloc files islettype
     try
-   saveAllFigsToPPT([fileloc fileloc(end-3:end-1) 'PhaseAnalysis'])
+   %saveAllFigsToPPT([fileloc fileloc(end-3:end-1) 'PhaseAnalysis'])
   end
 end
 %     
