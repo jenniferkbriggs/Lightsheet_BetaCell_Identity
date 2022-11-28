@@ -14,7 +14,7 @@ addpath('/Users/brigjenn/Documents/GitHub/UniversalCode')
 end
 
 %change the percent of cells you are looking at
-   percent_to_analyze = 0.05
+   percent_to_analyze = 0.1
    
 %decide whether to automatically or manually pick waves
     auto = 1; % automatically pick oscillations
@@ -23,12 +23,12 @@ end
 set(0, 'defaultFigureUnits','normalized', 'defaultFigurePosition', [0.4375 0.1100 0.4675 0.5671]);
 set(0,'defaultAxesFontSize',16)
 
-islettype = 'EJ106'
+islettype = 'EJ111'
 
 fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Singlecelltraces/')
 cd([fileloc islettype])
 files = dir('.*pos*')
-for fi = 1:length(files)
+for i = 2%:length(files)
 filename = files(fi).name(3:9)
 fullfile = [fileloc islettype '/' filename]
 %Here we load the file
@@ -49,91 +49,8 @@ fullfile = [fileloc islettype '/' filename]
 %to look at just the beginning of an oscillation
 
 calcium = smoothdata(calcium, 1, 'movmean',20);
-if auto ==0
-    title('Select approximate peak of interesting oscillations')
-    starttime =  ginput()  %here you put the time in seconds that you want to start the analysis
-    starttime = starttime(:,1);
-else   
-    cal = (mean(calcium')-min(mean(calcium')))./range(mean(calcium'));
-    [~, starttime] = findpeaks(cal, time, 'MinPeakProminence', .05, 'MinPeakDist',60);
-    starttime(starttime < 200) = [];
-end
+[start_indx, end_indx] = identify_oscillations(calcium, time, auto)
 
-wavenum = length(starttime);
-
-    for i = 1:wavenum
-    xline(starttime(i), 'label',['wavenumber: ' num2str(i)])
-    end
-    
-    title('Click continue or type dbcont if happy')
-    
-%keyboard
-    title(filename)
-    
-%% Identify Oscillations
-
-meancal = mean(calcium');
-meandiff = diff(meancal);
-
-figure, plot(meancal)
-
-for i = 1:wavenum
-    %select area around peak:
-    start_indx_f = find(abs(time-starttime(i))<0.5); 
-    
-    %find time of activity
-    if start_indx_f(1)-200 < 1
-        largearea = meancal(1:start_indx_f(1)+200);
-    elseif start_indx_f(end)+200 > length(meancal)    
-        largearea = meancal(start_indx_f(1)-200:end);
-    else   
-        largearea = meancal(start_indx_f(1)-200:start_indx_f(1)+200);
-    end
-    timeon = find((largearea - min(largearea))/(range(largearea)) > (0.3));
-    timeon2 = find(diff(timeon) > 2);
-
-    if ~isempty(timeon2)
-        for j = 1:length(timeon2)
-            if timeon2(j) < length(timeon)/2
-                timeon = timeon(timeon2(j)+1:end);
-            else
-                try
-                timeon = timeon(1:timeon2(j));
-                catch
-                    timeon = timeon(1:end-1);
-                end
-            end
-        end
-    end
-    period = timeon(end)-timeon(1);
-    
-    st = start_indx_f(1) - round(2*period/3);
-    if st < 1
-        st = 1;
-    end
-    ed = start_indx_f(1) + round(period/4);
-    
-    meandiff2 = meandiff;
-    meandiff2([1:st]) = 0;
-    meandiff2([ed:end]) = 0;
-    
-    stinx = find(meandiff2 == max(meandiff2(st:ed)));
-    stinx = stinx(stinx > st & stinx < ed)-round(period/4);
-
-    start_indx(i) = stinx(1);
-    
-  
-    [pks,locs] = findpeaks((meancal(st:ed)-min(meancal(st:ed)))/range(meancal(st:ed)), 'MinPeakDist',10, 'MinPeakProminence',.2);
-    if isempty(locs)
-         [pks,locs] = max(meancal(st:ed));
-    end
-    [~,minpkloc] = min(abs(start_indx_f(1)-locs));
-    edinx = st+locs(minpkloc)-period/8;
-    edinx = edinx(edinx > st & edinx < ed+100);
-    end_indx(i) = round(edinx(1));
-    
-    hold on, xline(start_indx(i), 'label',['start: ' num2str(i)]), xline(end_indx(i), 'label', ['end:' num2str(i)])
-end
     
 
 %% Wave origin analysis
@@ -325,11 +242,15 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
 
    ax = gca;
    ax.YDisplayLabels = ydisplayvalues;
-   colormap('parula')
+   colormap hot
+   caxis manual
+   caxis([0, 1])
 
    ylabel('Ranking sorted by average value')
    xlabel('Oscillation Number')
    title('Cell Phase')
+   set(gca, 'box','off')
+   set(gcf, 'color','none')
    %saveas(gcf, [fileloc 'HeatMap.png'])
     
   
@@ -412,55 +333,65 @@ legend([s(1) e(1)], 'High Phase Center', 'Low Phase Center', 'location','east')
     title(['Oscillation: ' num2str(i)])
     end
       %  saveas(gcf, [fileloc 'Highphasebar.png'])
-      clearvars -except   percent_to_analyze auto fileloc files islettype
-    try
+      clearvars -except   percent_to_analyze auto fileloc files islettype calcium_demeaned time cells_sorted X Y Z calcium
    %saveAllFigsToPPT([fileloc fileloc(end-3:end-1) 'PhaseAnalysis'])
   end
-end
+
 %     
 %     
-%     %% If you want to watch the calcium oscillations:
-%     figure, nexttile, 
-%     
-%     calcium_av= movmean(calcium_demeaned, 5);
-%     colormap 
-%  
-%     nexttile(2)
-%     plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
-%     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
-%     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
-%     xline(1, 'linewidth', 4)
+%% If you want to watch the calcium oscillations:
+    figure, nexttile, 
+    calcium_av= movmean(calcium_demeaned, 5);
+    colormap 
+ 
+    nexttile(2)
+    plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+    hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
+    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
+    xline(1, 'linewidth', 4)
+    set(gca, 'color', 'none')
+    set(gca, 'box','off')
+    xlabel('Time')
+    ylabel('Normalized Calcium')
+
+    xwaveinit = X(cells_sorted(1:5));
+    ywaveinit = Y(cells_sorted(1:5));
+    zwaveinit = Z(cells_sorted(1:5));
+    
+    my = mean(ywaveinit);
+    mx = mean(xwaveinit);
+    mz = mean(zwaveinit);
+    
+
 % 
-%     xwaveinit = X(cells_sorted(1:5));
-%     ywaveinit = Y(cells_sorted(1:5));
-%     zwaveinit = Z(cells_sorted(1:5));
-%     
-%     my = mean(ywaveinit);
-%     mx = mean(xwaveinit);
-%     mz = mean(zwaveinit);
-%     
-%     
-% % 
-% %     for i = 1:5:length(calcium);
-% % 
-% %        nexttile(1)
-% %        scatter3(X,Y,Z,100, calcium_demeaned(i,:), 'filled')
-% %        %annotation('textarrow', mx,my,'String', 'Wave Initiators')
-% %        text(mx+50,my-50,mz, 'Wave Initiators', 'FontSize',20)
-% %        colorbar('south','axislocation', 'in')
-% %        caxis manual
-% %        caxis([0, 1])
-% %        set(gca, 'visible', 'off')
-% % 
-% %        nexttile(2)
-% %         ax = gca
-% %         axc = ax.Children
-% %         axc(1)
-%         axc(1).Value = i
-%         
-%        drawnow
-% %        if i == 1
-% %             keyboard
-% %         end
-%  
-%     end
+    for i = 1:1:length(calcium);
+
+       nexttile(1)
+      colormap hot
+      % scatter3(X,Y,Z,100,((calcium_demeaned(i,:)-min(calcium_demeaned(i,:)))./range(calcium_demeaned(i,:))), 'filled')
+      scatter3(X,Y,Z,100,(calcium_demeaned(i,:)), 'filled')
+
+       %annotation('textarrow', mx,my,'String', 'Wave Initiators')
+       text(mx+50,my-50,mz, 'Wave Initiators', 'FontSize',20)
+       colorbar('south','axislocation', 'in')
+       caxis manual
+       caxis([0, 1])
+       
+       set(gca, 'visible', 'off')
+
+       nexttile(2)
+        ax = gca
+        axc = ax.Children
+        axc(1)
+        axc(1).Value = i*mean(diff(time));
+        
+       drawnow
+       if i == 1
+            keyboard
+            legend([line1(1), line2(1)], {'Wave Initiators', 'Wave End'}, 'FontSize', 15)
+             gif('../EJ111/WaveInitiators.gif')
+
+       end
+        gif
+ 
+    end
