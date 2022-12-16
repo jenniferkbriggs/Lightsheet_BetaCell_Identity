@@ -156,6 +156,9 @@ for j = 1:length(start_indx)-1
     Threshold(j) = findoptRth(calcium(start_indx(j):start_indx(j+1),:), Opts);
 end
 
+
+
+
 figure
 for j = 1:length(start_indx)-1 %network analysis would be start to start of oscillation
     [N, adj_multi, ~, ~,~,Rij,~] = links(calcium(start_indx(j):start_indx(j+1),:), median(Threshold),Opts,fignum); %%This is where the network is built
@@ -166,7 +169,9 @@ for j = 1:length(start_indx)-1 %network analysis would be start to start of osci
     Hubs_multi(1:length(Hubs),j) = Hubs;
     num_hubs(j) = length(Hubs);
     
+    degree(:,j) = sum(adj_multi);
     %%------plot network------%%
+    if 0
     c = 0.7.*ones(size(Locations));
     c(Hubs,1) = ones(length(Hubs), 1).*136/255;
     c(Hubs,2) = ones(length(Hubs), 1).*8./255';
@@ -197,12 +202,69 @@ for j = 1:length(start_indx)-1 %network analysis would be start to start of osci
     else
         gif
     end
+    end
 end
     close(figure(6))
 
 %take the minimum number of hubs.  %questionable methodology....
 out = oscillationstability(length(start_indx), Locations, adj_multi, Hubs_multi)
     
+%Here test for consistency:
+%Hubs_multi(Hubs_mutli == 0) = NaN;
+cell_indx= [1:length(adj)];
+for i = 1:length(start_indx)-1
+    Xi = degree(:,i);%zeros(size(cell_indx));
+    %Xi(Hubs_multi(i, :)) = 1; %1 if hub
+    
+    for j = 1:length(start_indx)-1
+        if i == j
+            p(i,j) = NaN;
+            ks2stat(i,j) = NaN;
+        else
+%         if i < j
+       Xj = degree(:,j);%zeros(size(cell_indx));
+       %Xj(Hubs_multi(j,:)) = 1;
+       [~, p(i,j), ks2stat(i,j)] = kstest2([cell_indx, Xi'], [cell_indx, Xj']) %KS test is a non-parametric test which compares distributions (Yanran)
+%         else
+%            % h(i,j) = NaN;
+%             p(i,j) = NaN;
+%             ks2stat(i,j) = NaN;
+         end
+    end
+end
+
+ %% analyze the trajectory of cells
+    [~,cells_sorted] = sort(mean(degree'));
+        
+   ranking = degree(cells_sorted,:)./(max(degree));
+   
+   wavenum = length(start_indx)-1;
+   numcells = length(adj);
+   xvalues = [1:wavenum];
+   yvalues = sprintfc('%d',[1:(numcells)]);
+   figure, fig1 = heatmap(xvalues, yvalues, ranking)
+   ydisplayvalues = sprintfc('%d',[1:(numcells)]);
+  ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(3:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(4:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(5:10:length(ydisplayvalues)) = {''};
+      ydisplayvalues(6:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(7:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(8:10:length(ydisplayvalues)) = {''};
+   ydisplayvalues(9:10:length(ydisplayvalues)) = {''};
+
+   ax = gca;
+   ax.YDisplayLabels = ydisplayvalues;
+   cc = colorbar
+   colormap('parula')
+    ylabel(cc, 'Normalized Degree')
+   ylabel('Cell Number')
+   xlabel('Oscillation Number')
+   
+   
+   
+   
 if i == 1
     for j = 1:2
      figure(j)
