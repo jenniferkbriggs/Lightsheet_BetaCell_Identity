@@ -1,6 +1,9 @@
 function [start_indx, end_indx] = identify_oscillations(calcium, time, auto)
 %% Identify Oscillations manually or automatically
 % Jennifer Briggs 11/2022
+if size(calcium,1)>size(calcium,2)
+    calcium = calcium';
+end
 if auto ==0
     title('Select approximate peak of interesting oscillations')
     starttime =  ginput()  %here you put the time in seconds that you want to start the analysis
@@ -21,7 +24,7 @@ wavenum = length(starttime);
     
 %keyboard
     
-meancal = mean(calcium');
+meancal = mean(calcium);
 meandiff = diff(meancal);
 
 figure, plot(meancal)
@@ -77,10 +80,17 @@ for i = 1:wavenum
          [pks,locs] = max(meancal(st:ed));
     end
     [~,minpkloc] = min(abs(start_indx_f(1)-locs));
-    edinx = st+locs(minpkloc)-period/8;
+    edinx = max([st+100, st+locs(minpkloc)-period/8]); %%There is a minimum length that must be evaluated over
+       
     edinx = edinx(edinx > st & edinx < ed+100);
     end_indx(i) = round(edinx(1));
-    
+    try
+    if time(end_indx(i)) > starttime(i+1)
+        disp('Error, oscillation is too thin to count')
+        keyboard
+    end
+    end
+
     hold on, xline(start_indx(i), 'label',['start: ' num2str(i)]), xline(end_indx(i), 'label', ['end:' num2str(i)])
 end
 end

@@ -1,3 +1,4 @@
+function out = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, calstore, timestore,start_indx, end_indx, time)
 %% by Jennifer Briggs 02/28/2022
 %This script is modified off of code from Vira and Jenn - calculates phase of cells. 
 %Input: calcium wave form
@@ -9,16 +10,9 @@
 %whole thing or look at a single oscillation. Here we define what area we
 %are look. Generally, if you are looking for a wave initiator, you'll want
 %to look at just the beginning of an oscillation
-    title('Select the beginning of 5 oscillations')
-    starttime =  ginput(5)  %here you put the time in seconds that you want to start the analysis
-    starttime = starttime(:,1);
-    hold on, xline(starttime)
-    title('Select the peak of those oscillations')
-    endtime =    ginput(5)  %put the end time here
-    endtime = endtime(:,1);
-    xline(starttime, 'label','This is where we start')
-    xline(endtime, 'label','This is where we end')
-    wavenum=length(starttime);
+perc= 0.05
+    wavenum=length(start_indx);
+    numcells = size(calcium,2);
 
     % for plotting: 
     ydisplayvalues = sprintfc('%d',[1:(numcells)]);
@@ -31,19 +25,6 @@
        ydisplayvalues(7:10:length(ydisplayvalues)) = {''};
        ydisplayvalues(8:10:length(ydisplayvalues)) = {''};
        ydisplayvalues(9:10:length(ydisplayvalues)) = {''};
-%% Start phase analysis MATLAB works by indexing the datapoints. Therefore, we
-    %must find what index the time that you want to look at is.
-
-    for i = 1:wavenum
-    start_indx_f = find(abs(time-starttime(i))<0.5); 
-    start_indx(i) = start_indx_f(1);
-    end_indx_f = find(abs(time-endtime(i))<0.5);
-    end_indx(i) = end_indx_f(1);
-    end
-    
-    %maybe we should smooth the data;
-   % calcium = smoothdata(calcium, 1, 'movmedian',3);
-
 %% Wave origin analysis
     
     
@@ -59,14 +40,14 @@
           
    for i = 1:length(end_indx)
     % run phase analysis for each oscillation
-    cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];,...
+    cashort =  [calcium_demeaned(start_indx(i):end_indx(i),:)];
        % calcium_demeaned(start_indx(2):end_indx(2),:);...
        % calcium_demeaned(start_indx(3):end_indx(3),:);...
        % calcium_demeaned(start_indx(4):end_indx(4),:);...
        % calcium_demeaned(start_indx(5):end_indx(5),:)];
     
  
-    step = .01; %this gives how much to interpolate by
+    step = .005; %this gives how much to interpolate by
     xq = 1:step:size(cashort,1)+1;
     vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
     %vq2 = spline(1:size(cashort,1),cashort',xq);
@@ -96,7 +77,9 @@
     newmaxCLvec_init = maxCL-mean(maxCL);
     newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms
 
-
+    if isempty(nonzeros(newmaxCLvec_init))
+        error('Something wrong with calcium signals')
+    end
     %this is where you get the final output. phasevecsort gives you the
     %sorted vector of the phase lag compared to the islet mean.
     %cells_sorted is what you are really interested in. This gives the cell
@@ -110,9 +93,6 @@
    end
    
    
-   [r_mean,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(start_indx), Locations, newmaxCLvec(i,:), newmaxCLvec(i,:), phasevecsort(1:10));
-   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'Degree_KL.csv'], Degree_KL)
-   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'COG_KL.csv'], COG_KL)
 
    
     
@@ -133,9 +113,13 @@
    ylabel('Cell Number')
    xlabel('Oscillation Number')
    
-   saveas(gcf, [fileloc 'HeatMap.png'])
+  % saveas(gcf, [fileloc 'HeatMap.png'])
     
-  
+   [r_mean,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(start_indx), Locations, newmaxCLvec, newmaxCLvec, cells_sorted(:,1:round(numcells*perc))', 1);
+   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'Degree_KL.csv'], Degree_KL)
+   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'COG_KL.csv'], COG_KL)
+    out.COG_KL_wave = COG_KL;
+    out.Degree_KL_wave = Degree_KL;
     
     %% find the average phase for all oscillations
     allphase = mean(finalphase);
@@ -153,8 +137,8 @@
      end
           linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
 
-        saveas(gcf, [fileloc 'OscillationsWPhase.png'])
-        saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
+       % saveas(gcf, [fileloc 'OscillationsWPhase.png'])
+       % saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
 
      
      
@@ -206,8 +190,11 @@
     
     
   
-    
-    
+        saveAllFigsToPPT([savename fileloc(end-5:end-1) filename 'WaveInitiators'])
+
+end
+
+function out = watchoscillations(calcium_demeaned, cells_sorted)
      %% If you want to watch the calcium oscillations:
     figure, nexttile, 
     
@@ -251,3 +238,4 @@
 %         end
  
     end
+end

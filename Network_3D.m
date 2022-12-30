@@ -1,4 +1,4 @@
-function out = Network_3D(calcium, cuttime, numtrial, photobleaching)
+function out = Network_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, calstore, timestore,start_indx, end_indx)
 %% Run Network Analysis
 % Jennifer Briggs 06/02/2022
 for i = 1:numtrial
@@ -24,6 +24,7 @@ Opts.Subplotnum = 0;
 Opts.figs = 1;
 Opts.multiseed = 0;
 Opts.multiseednum = 1;
+fignum = 1
 
 [N, adj, kperc, histArrayPercShort, Rij] = links(calcium,Threshold,Opts,fignum); %%This is where the network is built
 [sorted, cellsor]= sort(N);
@@ -84,7 +85,6 @@ end
 end
 %percent of Hubs that are consistent across conditions:
 
-saveAllFigsToPPT(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename])
 
 
     
@@ -110,31 +110,27 @@ time = timestore(cuttime(i):cuttime(i+1),:);
 if photobleaching
 calcium = detrend_photobleaching(calcium);
 end
-figure(7), plot(time,calcium) %plot calcium
-disp("Resize the figure and then click continue after you are happy with it")
-Opts.direction_hold = 1
-Opts.figs = 0;
-[start_indx, end_indx] = identify_oscillations(calcium, time, 0)
 % [~, start_indx] = findpeaks(mean(calcium), 'MinPeakProminence', 0.2)
 % xline(time(start_indx))
 % start_indx = [1, start_indx]
-calcium = calcium;
-close(figure(7))
+  if size(calcium,1)<size(calcium,2)
+     calcium = calcium';
+  end
 
 %%
-figure(6),
 calcium = (calcium-min(calcium))./range(calcium);
 for j = 1:length(start_indx)-1
     if start_indx(j) < 1
         start_indx(j) = 1
     end
-    close all
     Threshold(j) = findoptRth(calcium(start_indx(j):start_indx(j+1),:), Opts);
 end
 
 start_indx(end) = length(calcium);
 
 figure
+Opts.figs = 0;
+Opts.direction_hold = 1;
 for j = 1:length(start_indx)-1 %network analysis would be start to start of oscillation
     [N, adj_multi, ~, ~,~,Rij,~] = links(calcium(start_indx(j):start_indx(j+1),:), quantile(Threshold,0.1),Opts,fignum); %%This is where the network is built
     k(j) = mean2(Rij);
@@ -184,7 +180,9 @@ end
 %take the minimum number of hubs.  %questionable methodology....
 [r_mean,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(start_indx), Locations, degree, Adj, Hubs_multi);
 
-    
+    out.COG_KL_net = COG_KL;
+    out.Degree_KL_net = Degree_KL;
+
  %% analyze the trajectory of cells
     [~,cells_sorted] = sort(mean(degree'));
         
@@ -220,5 +218,6 @@ else
     end
 end
 end
-saveAllFigsToPPT(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'OscillationHubs'])
+saveAllFigsToPPT([savename fileloc(end-5:end-1) filename 'Network'])
 
+end
