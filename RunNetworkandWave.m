@@ -14,28 +14,41 @@ try
 addpath('/Users/brigjenn/Documents/GitHub/UniversalCode')
 end
 
+
 %% Change these!!
-pka = 0
-fileloc = ('/Volumes/Briggs_10TB/Merrin/Ca_Courses/Ca_Courses_new/EJ129 10G/EJ129 10G F03_Statistics/')
-filename = 'F03 10g'
-fullfile = [fileloc filename]
+pka = 0 %1 if there is there PKA, 0 if control
+fileloc = ('/Volumes/Briggs_10TB/Merrin/2023Data/EJ129 10G/')
+files = dir(fileloc);
+files_dir = {};
+for i = 1:length(files)
+    if isfolder([fileloc files(i).name]) & ~contains(files(i).name, '.')
+        files_dir{end+1} = {files(i).name}
+    end
+end
+
+for i = 1:length(files_dir)
+fullfile = [fileloc files_dir{i}{1} '/']
+name = files_dir{i}{1}
 savename = '/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/'
 
 %% Here we load the files
-    calcium = readmatrix([fullfile '_Plot.csv']);%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv
-    calcium(1:3,:) = []; %the CSV you have has the first 3 rows as NAN so we remove them
+    calcium = readmatrix([fullfile 'Plot.csv']);%readmatrix('/Volumes/Briggs_2TB/3DIslet/Erli_example.csv'); %change this to be wherever you store your csv
     time = calcium(:,1);   %time is in the first column so pull this out;
     calcium(:,1) = [];     %remove the time so now 'calcium' only has calcium intensity
-    Locations = readmatrix([fullfile '_Pos.csv']);
+    try
+    Locations = readmatrix([fullfile 'Pos.csv']);
+    catch
+        Locations = readmatrix([fullfile ' pos_Detailed.csv']);
+    end
     Locations = Locations(:,1:3);
     figure, plot(mean(calcium'))
     title('Is there photobleaching? 1 for yes, 0 for no')
     photobleaching= input('Is there photobleaching? 1 for yes, 0 for no')
     if pka
-    figure, plot(mean(calcium'))
-    title('Select beginning of second phase, beginning of pka administration, and end of time course')
-    [cuttime, ~] = ginput(3)
-    close(figure(1))
+        figure, plot(mean(calcium'))
+        title('Select beginning of second phase, beginning of pka administration, and end of time course')
+        [cuttime, ~] = ginput(3)
+        close(figure(1))
     end
     calstore = calcium;
     timestore = time;
@@ -58,8 +71,14 @@ Opts.figs = 0;
 xline(start_indx, 'label','This is where we start')
 xline(end_indx, 'label','This is where we end')
 
-close figure 7
-%% Run network analysis
-network = Network_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, calstore, timestore,start_indx, end_indx)
+%close figure 7
+%% Run network analysisclose all
+
+network = Network_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, name, Locations, timestore,start_indx, end_indx)
 %% Run waveintiator analysis
-wave = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, calstore, timestore,start_indx, end_indx, time)
+wave = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, name, Locations, timestore,start_indx, end_indx, time)
+
+wave_all.(name(end-2:end))= wave;
+network_all.(name(end-2:end))= network;
+
+end
