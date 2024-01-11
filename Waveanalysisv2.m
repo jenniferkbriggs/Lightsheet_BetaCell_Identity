@@ -156,7 +156,7 @@
         saveas(gcf, [fileloc 'OscillationsWPhase.png'])
         saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
 
-     
+
      
     %X = Locations(:,1);
     %Y = Locations(:,2);

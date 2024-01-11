@@ -1,7 +1,10 @@
-function out = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, calstore, timestore,start_indx, end_indx, time)
+function out = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, timestore,start_indx, end_indx, time, saveon, Correlation)
 %% by Jennifer Briggs 02/28/2022
 %This script is modified off of code from Vira and Jenn - calculates phase of cells. 
 %Input: calcium wave form
+% ----: Location: number of cells x 3 (x,y,z) location
+% ----: Correlation 1 if phase is determined using cross correlation and 0
+%       if phase is determine using threshold
 %Output: time of phase difference in ms
 %V2 by EJ, can pick any number of waves and plot the top 10% of the cells 
 
@@ -10,7 +13,12 @@ function out = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fil
 %whole thing or look at a single oscillation. Here we define what area we
 %are look. Generally, if you are looking for a wave initiator, you'll want
 %to look at just the beginning of an oscillation
-perc= 0.05
+
+%options:
+if ~exist('saveon') %writing output to csv. If no options then write
+    saveon = 1
+end
+    perc= 0.10
     wavenum=length(start_indx);
     numcells = size(calcium,2);
 
@@ -31,6 +39,13 @@ perc= 0.05
 %in order to make the analysis more accurate, we linearly interpolate between the
 %points to artificially increase resolution. We may need to play with this
 %as the outputs are not getting very good differentiation between phases.
+if photobleaching
+    [~,bo] = detrend_photobleaching(calcium(cuttime(1):cuttime(2),:)); % only remove photobleaching based on control!
+    trendline = polyval(bo, [0:length(calcium)-1]');
+    calstore = (calcium-trendline)./(trendline-min(min(calcium)));
+else
+    calstore = calcium;
+end
     calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
     %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
@@ -52,32 +67,54 @@ perc= 0.05
     vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
     %vq2 = spline(1:size(cashort,1),cashort',xq);
     
-    timeunits = mean(diff(time))*step*1000; %ms
+    timeunits = mean(diff(time), 'omitnan')*step*1000; %ms
     numcells=size(cashort,2);
 
     calciumT = (vq1);                           % new calcium time course
     [row,col] = find(isnan(calciumT)); %remove NaN's
     calciumT = calciumT(1:row(1)-1,:);
-    % 2. MAKING THE REFERENCE SIGNAL TO COMPARE THE SIGNAL OF INDIVIDUAL CELL'S CROSSCORRELATION WITH THIS REFERENCE
-    MeanIslet= mean(calciumT,2);       % reference signal. Index (i-(st-1)) is here to account for times when st is not 0, otherwise indexing is wrong
+   % 
+   % 
+   %  % 2. MAKING THE REFERENCE SIGNAL TO COMPARE THE SIGNAL OF INDIVIDUAL CELL'S CROSSCORRELATION WITH THIS REFERENCE
     clear vq1 cashort xq camax
 
     % 3. OBTAINING CROSS-CORRELATION OF THE REFERENCE SIGNAL (MEANISLET) WITH EACH INDIVIDUAL CELL
     tic
-    st = size(calciumT,1);
-    for j=1:numcells % itterative index for cells
-       [c(:,j)]=xcov(calciumT(round(st/5):round(4*st/5),j),MeanIslet,'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
+
+    %   HERE WE CALCULATE PHASE USING CROSS CORRELATIONS
+    if Correlation
+        MeanIslet= mean(calciumT,2);       % reference signal. Index (i-(st-1)) is here to account for times when st is not 0, otherwise indexing is wrong
+        st = size(calciumT,1);
+        for j=1:numcells % itterative index for cells
+           [c(:,j)]=xcov(calciumT(1:round(4*st/5),j),MeanIslet,'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
+        end
+        toc
+    
+        [maxCV, maxCL]=max(c);
+        while length(unique(maxCL))<2;
+            c(unique(maxCL), :) = [];
+            [maxCV, maxCL]=max(c);
+        end
+        clear c
+    else
+
+   % HERE WE CALCULATE PHASE USING A THRESHOLD
+   %make sure all cells are normalized: 
+   calciumT = normalize(calciumT, "range");
+   for j = 1:numcells
+       timehalf = find(calciumT(:,j)>0.5);
+       maxCL(j) = timehalf(1);
+   end
+  
     end
-    toc
+   % THE REST OF CODE IS USED FO
 
-    [maxCV, maxCL]=max(c);
-    clear c
-
-   % 4. PLOTTING SIGNAL, XCOV, AND OUTPUTTING MAX XCOV AND CORRESPONDING TIME LAG
     newmaxCLvec_init = maxCL-mean(maxCL);
     newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms
 
+   %  clear maxCL
     if isempty(nonzeros(newmaxCLvec_init))
+        keyboard
         error('Something wrong with calcium signals')
     end
     %this is where you get the final output. phasevecsort gives you the
@@ -114,13 +151,72 @@ perc= 0.05
    xlabel('Oscillation Number')
    
   % saveas(gcf, [fileloc 'HeatMap.png'])
+  for i = 1:numtrial
+    indexes = find(start_indx < cuttime(i+1) & start_indx > cuttime(i));
+   [loc_mean, loc_spread, Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(indexes), Locations, newmaxCLvec(indexes,:), newmaxCLvec(indexes,:), cells_sorted(indexes,1:ceil(numcells*perc))', 1);
+   % if saveon
+   % csvwrite([savename '/' filename '/Wave_' 'Degree_KL.csv'], Degree_KL)
+   % csvwrite([savename '/' filename '/Wave_' 'COG_KL.csv'], COG_KL)
+   % end
+  %% Quantify distance of all cells from center and radially: 
+  IsletCenter = mean(Locations);
+  dist_from_center = sqrt((Locations(:,1) - IsletCenter(1)).^2 +(Locations(:,2) - IsletCenter(2)).^2 + (Locations(:,3) - IsletCenter(3)).^2);
+
+  % NEED TO QUANTIFY RADIAL: 
+
+
     
-   [r_mean,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(start_indx), Locations, newmaxCLvec, newmaxCLvec, cells_sorted(:,1:round(numcells*perc))', 1);
-   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'Degree_KL.csv'], Degree_KL)
-   csvwrite(['/Users/brigjenn/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/NetworkAnalysis/' fileloc(end-5:end-1) filename 'COG_KL.csv'], COG_KL)
-    out.COG_KL_wave = COG_KL;
-    out.Degree_KL_wave = Degree_KL;
+    out.COG_KL_wave(i).trial = COG_KL;
+    out.Degree_KL_wave(i).trial = Degree_KL;
+        top10 = round(numcells*.1);
+   if i == 1
+        out.MeanLocation = loc_mean;
+        out.STLocation = loc_spread;
+        out.top10 = cells_sorted(find(start_indx < cuttime(2)),1:top10);
+        out.phase = newmaxCLvec;
+        out.phaserange = max(newmaxCLvec, [],2)-min(newmaxCLvec, [],2); %ms
+   else
+       out.STLocation_pka = loc_spread;
+       out.meanLocation_pka = loc_mean;        
+       out.top10_pka = cells_sorted(find(start_indx > cuttime(2)),1:top10);
+        out.phase_pka = newmaxCLvec;
+        out.phaserange_pka = max(newmaxCLvec, [],2)-min(newmaxCLvec, [],2); %ms
+
+        for i = 1:length(find(start_indx < cuttime(2)))
+            for j = 1:length(find(start_indx < cuttime(2)))
+                if i < j
+                    intravar(i,j) = length(intersect(out.top10(i,:), out.top10(j,:)))/length(out.top10(i,:));
+                else
+                    intravar(i,j) = NaN;
+                end
+            end
+        end
+        out.intravarall = intravar;
+        out.intravar = mean2(intravar(~isnan(intravar)));
+        
+       for i = 1:length(find(start_indx > cuttime(2)))
+            for j = 1:length(find(start_indx > cuttime(2)))
+                if i < j
+                    intravar_pka(i,j) = length(intersect(out.top10_pka(i,:), out.top10_pka(j,:)))/length(out.top10_pka(i,:));
+                else
+                    intravar_pka(i,j) = NaN;
+                end
+            end
+       end
+       out.intravar_pka_all = intravar_pka;
+       out.intravar_pka = mean2(intravar_pka(~isnan(intravar_pka)));
+       
+       
+       for i = 1:length(find(start_indx > cuttime(2)))
+            for j = 1:length(find(start_indx < cuttime(2)))
+                intervar(i,j) = length(intersect(out.top10(j,:), out.top10_pka(i,:)))/length(out.top10_pka(i,:));
+            end
+       end
+        out.intervar_all = intervar;
+        out.intervar = mean2(intervar);
+    end
     
+  end
     %% find the average phase for all oscillations
     allphase = mean(finalphase);
     
@@ -128,28 +224,47 @@ perc= 0.05
      for i = 1:wavenum
      nexttile
      plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
-     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(i,1:(wavenum-1))), 'linewidth',1, 'color', 'blue')
-     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(i,end-3:end)), 'linewidth',1, 'color', 'red')
+     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(i,1:10)), 'linewidth',1, 'color', 'blue')
+     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(i,end-10:end)), 'linewidth',1, 'color', 'red')
     xline(time(start_indx(i))), xline(time(end_indx(i)))
+    xlim([time(start_indx(i)), time(end_indx(i))])
     title(['Oscillation Number ' num2str(i)])
     axg.data(i) = gca
     legend([line1(1), line2(1)], {'High Phase','Low Phase'})
+    set(gca, 'color','none')
+    xlabel('Time (s)')
+    ylabel('Normalized Ca^{2+} Fluoresence')
+    set(gca, 'box','off')
+
      end
-          linkaxes([axg.data(1) axg.data(2) axg.data(3) axg.data(4) axg.data(5)], 'xy')
+     saveas(gcf, [savename '/' filename '/Wave_' 'AllOscillations.fig'])
 
-       % saveas(gcf, [fileloc 'OscillationsWPhase.png'])
-       % saveas(gcf, [fileloc 'OscillationsWPhase.fig'])
 
-     
-     
-    %X = Locations(:,1);
-    %Y = Locations(:,2);
-    %Z = Locations(:,3);
-    %figure, scatter3(X,Y,Z,100, newmaxCLvec/max(newmaxCLvec), 'filled')
-    %colormap hot
-    %h = colorbar
-    %set(gca, 'visible', 'off')
-    
+% plot locations
+    figure, 
+   tt = tiledlayout(2, ceil(size(cells_sorted,1)./2))
+
+    tt.TileSpacing = 'compact'
+    tt.Padding = 'compact'
+        for i = 1:size(cells_sorted, 1)
+            nexttile
+            scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.5)
+            hold on
+            scatter3(Locations(cells_sorted(i,1:top10),1), Locations(cells_sorted(i,1:top10),2), Locations(cells_sorted(i,1:top10),3), 100, 'MarkerFaceColor', 'blue', 'MarkerEdgeColor','blue' )
+            scatter3(Locations(cells_sorted(i,end-top10:end),1), Locations(cells_sorted(i,end-top10:end),2), Locations(cells_sorted(i,end-top10:end),3), 100, 'MarkerFaceColor', 'red', 'MarkerEdgeColor','red' )
+            legend('Normal Cell','High Phase','Low Phase','Location', 'Northeast')
+            set(gca, 'color','none')
+    title(['Oscillation Number ' num2str(i)])
+
+    xlabel('X (\mum)')
+    ylabel('Y (\mum)')
+    zlabel('Z (\mum)')
+        end
+
+        saveas(gcf, [savename '/' filename '/Wave_' 'HighPhaseLocation.png'])
+        saveas(gcf, [savename '/' filename '/Wave_' 'HighPhaseLocation.fig'])
+
+
     %% Calculate the number of high phase cells retained:
     
     %get top 10% of high phase cells
@@ -172,7 +287,7 @@ perc= 0.05
     
     ylabel('Phase (1 = first to depolarize)')
     xlabel('Oscillation')
-    saveas(gcf, [fileloc 'Highphasetraj.png'])
+    %saveas(gcf, [fileloc 'Highphasetraj.png'])
     
     %find percent of cells still within the top 5
     for i = 1:wavenum
@@ -182,20 +297,21 @@ perc= 0.05
     figure, bar(retained)
     ylabel('Percent of cells still in top 10%')
     xlabel('Oscillation')
-        saveas(gcf, [fileloc 'Highphasebar.png'])
+        %saveas(gcf, [fileloc 'Highphasebar.png'])
 
    
 
-    
-    
-    
   
-        saveAllFigsToPPT([savename fileloc(end-5:end-1) filename 'WaveInitiators'])
+        saveAllFigsToPPT([savename '/' filename '/WaveInitiators'])
 
 end
 
-function out = watchoscillations(calcium_demeaned, cells_sorted)
+function out = watchoscillations(calcium_demeaned, cells_sorted, Locations)
      %% If you want to watch the calcium oscillations:
+     addpath('~/Documents/GitHub/UniversalCode/gif/')
+     X = Locations(:,1);
+     Y = Locations(:,2);
+     Z = Locations(:,3);
     figure, nexttile, 
     
     calcium_av= movmean(calcium_demeaned, 5);
@@ -206,6 +322,12 @@ function out = watchoscillations(calcium_demeaned, cells_sorted)
     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
     xline(1, 'linewidth', 4)
+    set(gca, 'box','off')
+    set(gcf, 'color','white')
+    xlabel('Time (s)')
+    ylabel('Calcium Fluoresence')
+    
+
 
     xwaveinit = X(cells_sorted(1:5));
     ywaveinit = Y(cells_sorted(1:5));
@@ -215,27 +337,36 @@ function out = watchoscillations(calcium_demeaned, cells_sorted)
     mx = mean(xwaveinit);
     mz = mean(zwaveinit);
 
-    for i = 1:5:length(calcium);
+    gif('~/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/Results/CalciumWave.gif')
+    for i = 1:3:length(calcium);
 
        nexttile(1)
        scatter3(X,Y,Z,100, calcium_demeaned(i,:), 'filled')
        %annotation('textarrow', mx,my,'String', 'Wave Initiators')
-       text(mx+50,my-50,mz, 'Wave Initiators', 'FontSize',20)
-       colorbar('south','axislocation', 'in')
+       text(mx+10,my-10,mz, 'Wave Initiators', 'FontSize',20)
+       c = colorbar('south','axislocation', 'in')
+       ylabel(c, 'Phase')
        caxis manual
-       caxis([0, 1])
-       set(gca, 'visible', 'off')
+       caxis([0, 0.8])
+       ax = gca
+       ax.XTick = [];
+       ax.YTick = [];
+       ax.ZTick = [];
+
 
        nexttile(2)
-        ax = gca
-        axc = ax.Children
+
+     
+        ax = gca;
+        axc = ax.Children;
         axc(1)
-        axc(1).Value = i
+        axc(1).Value = time(i)
         
        drawnow
 %        if i == 1
 %             keyboard
 %         end
+    gif
  
     end
 end

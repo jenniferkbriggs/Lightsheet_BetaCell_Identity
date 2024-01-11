@@ -20,7 +20,7 @@ A = parseInputs(varargin{:});
 % get number of vertices
 n = size(A,1);
 % shortest path distances between each node
-D = graphallshortestpaths(A, 'Directed', false);
+D = distances(graph(A, 'upper'));
 nopath = (sum(sum(isinf(D))))/(length(D)*length(D-1)/2);%This the the number of pairs of cells with no path
 D(isinf(D))= NaN;
 % characteristic path length
@@ -44,8 +44,8 @@ COpen = mean(~isnan(CLocOpen));
 [ELocSGClosed,ELocSGOpen] = deal(zeros(n,1));
 for i = 1:n
     % distance matrix and number of vertices for current subgraph
-    DSGClosed = graphallshortestpaths(MClosed{i});
-    DSGOpen = graphallshortestpaths(MOpen{i});
+    DSGClosed = distances(graph(MClosed{i}, 'upper'));
+    DSGOpen = distances(graph(MOpen{i}, 'upper'));
     nSGClosed = numel(kClosed{i});
     nSGOpen = numel(kOpen{i});
     % efficiency of current subgraph

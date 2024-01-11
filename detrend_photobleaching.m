@@ -1,4 +1,4 @@
-function calcium = detrend_photobleaching(calcium)
+function [calcium, bo] = detrend_photobleaching(calcium)
 %% for photobleached calcium oscillations
 % Jennifer Briggs 11/2022
 

@@ -1,4 +1,4 @@
-function [r_mean,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(wavenum, Locations, degree, Adj, Hubs_multi, phase)
+function [locmean,locspread,Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(wavenum, Locations, degree, Adj, Hubs_multi, phase)
 %--Assessing the stability of hubs/highphase over multiple oscillations--%
 
 %Questions addressed: 
@@ -30,19 +30,25 @@ for i = 1:size(Hubs_multi,2)
     cog(i,:) = mean(Locations(Hubs_multi(:,i),:)); %center of gravity
     cog_std(i,:) = std(Locations(Hubs_multi(:,i),:))./range(Locations);
 end
-else
-    for i = 1:size(Hubs_multi,2)
-    az_spread(i) = std(az(~isnan(nonzeros(Hubs_multi(:,i)))));
-    el_spread(i) = std(el(~isnan(nonzeros(Hubs_multi(:,i)))));
-    r_spread(i) = std(r(~isnan(nonzeros(Hubs_multi(:,i)))));
+%Look at distance traved:
 
-    az_mean(i) = mean(az(~isnan(nonzeros(Hubs_multi(:,i)))));
-    el_mean(i) = mean(el(~isnan(nonzeros(Hubs_multi(:,i)))));
-    r_mean(i) = mean(r(~isnan(nonzeros(Hubs_multi(:,i)))));
-    cog(i,:) = mean(Locations(~isnan(nonzeros(Hubs_multi(:,i))),:)); %center of gravity
-    cog_std(i,:) = std(Locations(~isnan(nonzeros(Hubs_multi(:,i))),:))./range(Locations);
+
+else
+    for i = 1:wavenum
+    az_spread(i) = std(az(Hubs_multi(:,i)));
+    el_spread(i) = std(el(Hubs_multi(:,i)));
+    r_spread(i) = std(r(Hubs_multi(:,i)));
+
+    az_mean(i) = mean(az(Hubs_multi(:,i)));
+    el_mean(i) = mean(el(Hubs_multi(:,i)));
+    r_mean(i) = mean(r(Hubs_multi(:,i)));
+    cog(i,:) = mean(Locations(Hubs_multi(:,i),:)); %center of gravity
+    cog_std(i,:) = std(Locations(Hubs_multi(:,i),:))./range(Locations);
     end
 end
+
+locmean = [r_mean', el_mean', az_mean'];
+locspread = [r_spread', el_spread', az_spread'];
 %for plotting ----
     numcells = length(degree);
     ydisplayvalues = sprintfc('%d',[1:(numcells)]);
@@ -162,6 +168,16 @@ figure,
    
    
 % ----- Q4 ----- %Compare KL divergence
+%calculate maximum kl divergence
+ct = 1 
+while ct < 10
+    y = normpdf(degree_indx(:,2));
+    x = y(randperm(length(y)));
+    average_random(ct) = sum(y.*(log(y)-log(x)));
+    ct = ct+1;
+end
+av_rand = mean(average_random);
+
     for i = 1:wavenum
         for j = 1:wavenum
             y = normpdf(degree_indx(:,i));
@@ -173,6 +189,9 @@ figure,
             COG_KL(i,j) = sum(y.*(log(y)-log(x)));
         end
     end
+
+    Degree_KL = Degree_KL./av_rand; %normalize
+    COG_KL = COG_KL./av_rand;
     
     
 end

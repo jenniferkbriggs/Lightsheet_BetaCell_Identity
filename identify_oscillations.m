@@ -9,8 +9,8 @@ if auto ==0
     starttime =  ginput()  %here you put the time in seconds that you want to start the analysis
     starttime = starttime(:,1);
 else   
-    cal = (mean(calcium')-min(mean(calcium')))./range(mean(calcium'));
-    [~, starttime] = findpeaks(cal, time, 'MinPeakProminence', .05, 'MinPeakDist',60);
+    cal = (mean(calcium)-min(mean(calcium)))./range(mean(calcium));
+    [~, starttime] = findpeaks(cal, time, 'MinPeakProminence', .05, 'MinPeakDist',700);
     starttime(starttime < 200) = [];
 end
 
