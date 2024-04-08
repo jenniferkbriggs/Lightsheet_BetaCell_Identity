@@ -1,12 +1,10 @@
-function out = Wave_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, timestore,start_indx, end_indx, time, saveon, Correlation, wholeosc)
+function out = WaveEnd_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, timestore,start_indx, end_indx, time, saveon, Correlation)
 %% by Jennifer Briggs 02/28/2022
 %This script is modified off of code from Vira and Jenn - calculates phase of cells. 
 %Input: calcium wave form
 % ----: Location: number of cells x 3 (x,y,z) location
 % ----: Correlation 1 if phase is determined using cross correlation and 0
 %       if phase is determine using threshold
-% ----: Wholeosc 1 if you want to look at the entire oscillation rather
-% than just depolarization
 %Output: time of phase difference in ms
 %V2 by EJ, can pick any number of waves and plot the top 10% of the cells 
 
@@ -50,27 +48,26 @@ else
     calstore = calcium;
 end
 
+%sometimes there are really weird pieces of the data that I chop out
+%implicitly in the analysis but not here...so when we normalize, do so
+%using smoothed data
+casmooth = smoothdata(calcium); 
     cashort = [];
-    calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
+    calcium_demeaned = (calcium-min(casmooth))./(max(casmooth)-min(casmooth)); 
 
           
    for i = 1:length(end_indx)
-        if wholeosc
-            end_indx(1:length(end_indx)/2-1) = start_indx(2:length(start_indx)/2); %look at the entire wave 
-            end_indx(length(end_indx)./2) = cuttime(2); %make sure end indx is before administration  
-            end_indx(length(end_indx)/2+1:end-1) = start_indx(length(end_indx)/2+2:end);
-            end_indx(end) = cuttime(3);
-        end
 
     % run phase analysis for each oscillation
     cashort =  [calcium(start_indx(i):end_indx(i),:)];
+    casmooth = smoothdata(cashort); 
 
 
-    %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
+           %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
     %reflection on the staining rather than the actual cell's properties
-    cashort = (cashort - min(cashort))./(max(cashort)-min(cashort));
+    cashort = (cashort - min(casmooth))./(max(casmooth)-min(casmooth));
  
-    step = .01; %this gives how much to interpolate by
+    step = .005; %this gives how much to interpolate by
     xq = 1:step:size(cashort,1)+1;
     vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
     %vq2 = spline(1:size(cashort,1),cashort',xq);
@@ -97,9 +94,7 @@ end
         %super weird
         st = size(calciumT,1);
         for j=1:numcells % itterative index for cells
-           [c(:,j)]= xcorr(calciumT(:,j),MeanIslet,round(length(MeanIslet)./5),'coeff');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
-           timehalf = find(calciumT(:,j)>0.5);
-           depol(j) = timehalf(1);
+           [c(:,j)]=xcov(calciumT(:,j),MeanIslet,'none');      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag      % cross-covariance  measures the similarity between currentcell and shifted (lagged) copies of MeanIslet as a function of the lag.
         end
         toc
     
@@ -115,7 +110,7 @@ end
    %make sure all cells are normalized: 
    calciumT = normalize(calciumT, "range");
    for j = 1:numcells
-       timehalf = find(calciumT(:,j)>0.5);
+       timehalf = find(calciumT(:,j)<0.5);
        maxCL(j) = timehalf(1);
    end
   
@@ -123,7 +118,9 @@ end
    % THE REST OF CODE IS USED FO
 
     newmaxCLvec_init = maxCL-mean(maxCL);
-    newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms
+
+
+    newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms 
 
    %  clear maxCL
     if isempty(nonzeros(newmaxCLvec_init))
@@ -151,17 +148,16 @@ end
        [r, c] = find(cells_sorted' == i);
        ranking(:,i)  = 1-r./numcells; %If 1, first to depolarize
    end
-   avranking = mean(ranking);
-   [~,sorted1] = sort(avranking);
+   
    xvalues = [1:wavenum];
    yvalues = sprintfc('%d',[1:(numcells)]);
-   figure, fig1 = heatmap(xvalues, yvalues, ranking(:,sorted1)')
+   figure, fig1 = heatmap(xvalues, yvalues, ranking')
 
    ax = gca;
    ax.YDisplayLabels = ydisplayvalues;
    colormap('parula')
 
-   ylabel('Sorted By Average Phase')
+   ylabel('Cell Number')
    xlabel('Oscillation Number')
    
   % saveas(gcf, [fileloc 'HeatMap.png'])
@@ -212,7 +208,6 @@ end
     out.COG_KL_wave(i).trial = COG_KL;
     out.Degree_KL_wave(i).trial = Degree_KL;
         top10 = round(numcells.*perc);
-        maxdistance = range(Locations);
    if i == 1
         out.MeanLocation = loc_mean;
         out.STLocation = loc_spread;
@@ -233,12 +228,9 @@ end
             for j = 1:length(find(start_indx < cuttime(2)))
                 if k < j
                     intravar(k,j) = length(intersect(out.top10(k,:), out.top10(j,:)))/length(out.top10(k,:));
-                    intravar_bottom(k,j) = length(intersect(out.bottom10(k,:), out.bottom10(j,:)))/length(out.bottom10(k,:));                        cog_mov(k,j) = sqrt(sum((loc_mean(k,:) - loc_mean(j,:))./maxdistance).^2);
-                    out.cog_mov(k,j) = sqrt(sum((loc_mean(k,:) - loc_mean(j,:))./maxdistance).^2);
-
+                    intravar_bottom(k,j) = length(intersect(out.bottom10(k,:), out.bottom10(j,:)))/length(out.bottom10(k,:));
                 else
                     intravar(k,j) = NaN;
-                    out.cog_mov(k,j) = NaN;
                     intravar_bottom(k,j) = NaN;
                 end
             end
@@ -262,7 +254,6 @@ end
         for k = 1:size(out.top10_pka,1)
             out.distcenter_top10_pka(:,k) = dist_from_center(out.top10_pka(k,:)) ;
             out.distcenter_bottom10_pka(:,k) = dist_from_center(out.bottom10_pka(k,:)) ;
-            
         end
          for l = 1:length(start_indx)./2
             BottomLoc = [Locations(out.bottom10_pka(l,:),1), Locations(out.bottom10_pka(l,:),3), Locations(out.bottom10_pka(l,:),3)];
@@ -281,12 +272,11 @@ end
                 if k < j
                     intravar_pka(k,j) = length(intersect(out.top10_pka(k,:), out.top10_pka(j,:)))/length(out.top10_pka(k,:));
                     intravar_bottom_pka(k,j) = length(intersect(out.bottom10_pka(k,:), out.bottom10_pka(j,:)))/length(out.bottom10_pka(k,:));
-                    out.cog_mov_pka(k,j) = sqrt(sum((loc_mean(k,:) - loc_mean(j,:))./maxdistance).^2);
 
                 else
                     intravar_pka(k,j) = NaN;
                     intravar_bottom_pka(k,j) = NaN;
-                    out.cog_mov_pka(k,j) = NaN;
+
                 end
             end
        end
@@ -308,20 +298,9 @@ end
     end
     
   end
-try
+
     [out.rot, out.rot_pka, out.rot_intra] = phase_poles(length(indexes), out.top10, out.bottom10, out.top10_pka, out.bottom10_pka, Locations);
-catch
-    out.rot = NaN;
-    out.rot_pka = NaN;
-    out.rot_intra = NaN;
-end
-    if saveon
-    if wholeosc
-        saveas(gcf, [savename '/' filename '_WaveAxis.fig'])
-    else
-            saveas(gcf, [savename '/' filename '_Depolarization_WaveAxis.fig'])
-    end
-    end
+     saveas(gcf, [savename '/' filename 'WaveAxis_repolarize.fig'])
 
        %spread of top and bottom: 
    
@@ -342,21 +321,15 @@ end
      end
 
 
-     if 1 %Turn off figures
+     if 0 %Turn off figures
      figure,
      for i = 1:wavenum
      nexttile
-   cashort =  [calcium(start_indx(i):end_indx(i),:)];
-
-
-    %Lets normalize all calcium ranges, assuming the average flouresence value for a cell is a
-    %reflection on the staining rather than the actual cell's properties
-    calcium = (calcium - min(cashort))./(max(cashort)-min(cashort));
-     plot(time(start_indx(i):end_indx(i)), calcium(start_indx(i):end_indx(i),:), 'color',[0.7,0.7,0.7])
-     hold on, line2 = plot(time(start_indx(i):end_indx(i)), calcium(start_indx(i):end_indx(i),cells_sorted(i,end-10:end)), 'linewidth',1, 'color', 'red');
-     hold on, line1 = plot(time(start_indx(i):end_indx(i)), calcium(start_indx(i):end_indx(i),cells_sorted(i,1:10)), 'linewidth',1, 'color', 'blue');
-    %xline(time(start_indx(i))), xline(time(end_indx(i)))
-    %xlim([time(start_indx(i)), time(round(end_indx(i)))])
+     plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+     hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(i,1:10)), 'linewidth',1, 'color', 'blue');
+     hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(i,end-10:end)), 'linewidth',1, 'color', 'red');
+    xline(time(round(start_indx(i)))), xline(time(round(end_indx(i))));
+    xlim([time(round(start_indx(i))), time(round(end_indx(i)))]);
     title(['Oscillation Number ' num2str(i)])
     axg.data(i) = gca;
     legend([line1(1), line2(1)], {'High Phase','Low Phase'})
@@ -366,30 +339,22 @@ end
     set(gca, 'box','off')
 
      end
-    if saveon
-    if wholeosc
-        saveas(gcf, [savename '/' filename '_WaveAllOscillations.fig'])
-    else
-            saveas(gcf, [savename '/' filename '_DepolarizationAllOscillations.fig'])
-    end
-    end
+    saveas(gcf, [savename '/' filename 'AllOscillations_repolarize.fig'])
 
 
 % plot locations
     figure, 
-   % tt = tiledlayout(2, ceil(size(cells_sorted,1)./2))
-   % 
-   %  tt.TileSpacing = 'compact'
-   %  tt.Padding = 'compact'
-        for i = 1:3%size(cells_sorted, 1)
+   tt = tiledlayout(2, ceil(size(cells_sorted,1)./2));
+
+    tt.TileSpacing = 'compact';
+    tt.Padding = 'compact';
+        for i = 1:size(cells_sorted, 1)
             nexttile
-            scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.1)
+            scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.5)
             hold on
             scatter3(Locations(cells_sorted(i,1:top10),1), Locations(cells_sorted(i,1:top10),2), Locations(cells_sorted(i,1:top10),3), 100, 'MarkerFaceColor', 'blue', 'MarkerEdgeColor','blue' )
             scatter3(Locations(cells_sorted(i,end-top10:end),1), Locations(cells_sorted(i,end-top10:end),2), Locations(cells_sorted(i,end-top10:end),3), 100, 'MarkerFaceColor', 'red', 'MarkerEdgeColor','red' )
-            %scatter3(mean(Locations(cells_sorted(i,1:top10),1)), mean(Locations(cells_sorted(i,1:top10),2)), mean(Locations(cells_sorted(i,1:top10),3)), 400, 'MarkerFaceColor', 'yellow', 'MarkerEdgeColor','black', 'Marker','hexagram')
             legend('Normal Cell','High Phase','Low Phase','Location', 'Northeast')
-
             set(gca, 'color','none')
     title(['Oscillation Number ' num2str(i)])
 
@@ -398,19 +363,14 @@ end
     zlabel('Z (\mum)')
         end
 
-    if saveon
-    if wholeosc
-        saveas(gcf, [savename '/' filename '_WaveLocation.fig'])
-    else
-            saveas(gcf, [savename '/' filename '_DepolarizationLocation.fig'])
-    end
-    end
+        saveas(gcf, [savename '/' filename '_repolarizeLocation.png'])
+        saveas(gcf, [savename '/' filename '_repolarizeLocation.fig'])
 
 
     %% Calculate the number of high phase cells retained:
     
     %get top 10% of high phase cells
-   % top10 = round(numcells*.1);
+    top10 = round(numcells*.1);
     %first plot 'trajectory of top 5% of cells')
     topcells = cells_sorted(1,1:top10);
     bottomcells = cells_sorted(1,end-top10+1:end);
@@ -429,35 +389,29 @@ end
     
     ylabel('Phase (1 = first to depolarize)')
     xlabel('Oscillation')
-
-    if saveon
-        if wholeosc
-        saveas(gcf, [savename '/' filename '_WaveTrajectory.fig'])
-    else
-            saveas(gcf, [savename '/' filename '_DepolarizationTrajectory.fig'])
-        end
-    end
+    %saveas(gcf, [fileloc 'Highphasetraj.png'])
+    
     %find percent of cells still within the top 5
-    % for i = 1:wavenum
-    % retained(i) = length(intersect(cells_sorted(i,1:top10), topcells))./top10;
-    % 
-    % 
-    % figure, bar(retained)
-    % ylabel('Percent of cells still in top 10%')
-    % xlabel('Oscillation')
-    %     %saveas(gcf, [fileloc 'Highphasebar.png'])
-    % end
+    for i = 1:wavenum
+    retained(i) = length(intersect(cells_sorted(i,1:top10), topcells))./top10;
+    end
+    
+    figure, bar(retained)
+    ylabel('Percent of cells still in top 10%')
+    xlabel('Oscillation')
+        %saveas(gcf, [fileloc 'Highphasebar.png'])
+
    
-        if saveon
-        saveAllFigsToPPT([savename '/' filename '_WaveInitiators'])
-        end
+
+  
+        %saveAllFigsToPPT([savename '/' filename '/WaveInitiators_repolarize'])
      end
      close all
-
+     
 
 end
 
-function out = watchoscillations(time, calcium_demeaned, cells_sorted, Locations)
+function out = watchoscillations(calcium_demeaned, cells_sorted, Locations)
      %% If you want to watch the calcium oscillations:
      addpath('~/Documents/GitHub/UniversalCode/gif/')
      X = Locations(:,1);
@@ -469,10 +423,9 @@ function out = watchoscillations(time, calcium_demeaned, cells_sorted, Locations
     colormap 
  
     nexttile(2)
-    plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])    
-    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-10:end)), 'linewidth',1, 'color', 'red');
-
-    hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:10)), 'linewidth',1, 'color', 'blue');
+    plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+    hold on, line1 = plot(time, calcium_demeaned(:,cells_sorted(1:4)), 'linewidth',1, 'color', 'blue')
+    hold on, line2 = plot(time, calcium_demeaned(:,cells_sorted(end-3:end)), 'linewidth',1, 'color', 'red')
     xline(1, 'linewidth', 4)
     set(gca, 'box','off')
     set(gcf, 'color','white')
@@ -489,22 +442,21 @@ function out = watchoscillations(time, calcium_demeaned, cells_sorted, Locations
     mx = mean(xwaveinit);
     mz = mean(zwaveinit);
 
-    gif('~/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/Results/CalciumWave_F12.gif')
-    for j = 1:length(arrays)
-        i = arrays(j)
+    gif('~/OneDrive - The University of Colorado Denver/Anschutz/Islet/3DLightSheet/Results/CalciumWave.gif')
+    for i = 1:3:length(calcium);
+
        nexttile(1)
        scatter3(X,Y,Z,100, calcium_demeaned(i,:), 'filled')
        %annotation('textarrow', mx,my,'String', 'Wave Initiators')
-       %text(mx+10,my-10,mz, 'Wave Initiators', 'FontSize',20)
-       % c = colorbar('south','axislocation', 'in')
-       % ylabel(c, 'Phase')
+       text(mx+10,my-10,mz, 'Wave Initiators', 'FontSize',20)
+       c = colorbar('south','axislocation', 'in')
+       ylabel(c, 'Phase')
        caxis manual
-       caxis([0, 1.3])
-       ax = gca;
+       caxis([0, 0.8])
+       ax = gca
        ax.XTick = [];
        ax.YTick = [];
        ax.ZTick = [];
-       view(as, vs)
 
 
        nexttile(2)

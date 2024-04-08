@@ -7,6 +7,8 @@ if ~exist('saveon') %writing output to csv. If no options then write
     saveon = 1
 end
 
+perc=0.1;
+
 if photobleaching
     [~,bo] = detrend_photobleaching(calcium(cuttime(1):cuttime(2),:)); % only remove photobleaching based on control!
     trendline = polyval(bo, [0:length(calcium)-1]');
@@ -20,7 +22,7 @@ time = timestore(cuttime(i):cuttime(i+1),:);
 cellnum = min([size(calcium,1), size(calcium,2)]);
 Opts.Max = cellnum/8;
 Opts.Method = 'Degree'
-Opts.avDeg = 22;
+Opts.avDeg = 7;
 Threshold(i) = findoptRth(calcium, Opts);
 end
 
@@ -36,7 +38,7 @@ Opts.Subplotnum = 0;
 Opts.figs = 1;
 Opts.multiseed = 0;
 Opts.multiseednum = 1;
-fignum = 1
+fignum = 1;
 
 disp(Threshold(i))
 [N, adj, kperc, histArrayPercShort, Rij] = links(calcium,Threshold(i),Opts,fignum); %%This is where the network is built
@@ -71,17 +73,17 @@ try
     %turn off graphs for legend
     set(ghubs,'Visible','off'), set(gnonhubs,'Visible','off')
 end
-    top10 = length(N)*.1;
+    top10 = length(N)*perc;
     
 if i == 1
     for j = 1:5
      figure(j)
      ax = gca
-     if j<6
-        text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'Control','FontSize',30)
-     else
-        text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'Control','FontSize',30)
-     end
+     % if j<6
+     %    text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'Control','FontSize',30)
+     % else
+     %    text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'Control','FontSize',30)
+     % end
     end
     Hubs_control = Hubs;
     Netinfo_control = [L, EGlob, CClosed,ELocOpen, nopath, mean2(Rij)];
@@ -94,12 +96,12 @@ if i == 1
 else
     for j = 1:5
         figure(j+5)
-        ax = gca
-        if j <6
-            text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'PKa Application','FontSize',30)
-        else
-            text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'PKa Application','FontSize',30)
-        end
+        % ax = gca
+        % if j <6
+        %     text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'PKa Application','FontSize',30)
+        % else
+        %     text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'PKa Application','FontSize',30)
+        % end
     end
     Hubs_pka = Hubs;
     Netinfo_pka = [L, EGlob, CClosed,ELocOpen, nopath, mean2(Rij)];
@@ -152,6 +154,7 @@ for i = 1:numtrial
         start_indx  = [start_indx cuttime(end)];
     end
     
+    %get threshold
     for j = 1:length(start_indx)-1 %the last start_indx is the end of the trial
         if start_indx(j) < 1
             start_indx(j) = 1;
@@ -178,16 +181,22 @@ for j = 1:length(start_indx)-1 %network analysis would be start to start of osci
     if i == 1
         out.Hubs_multi(1:length(Hubs),j) = Hubs;
          out.num_hubs(j) = length(Hubs);
-         out.degree(:,j) = sum(adj_multi);
+         deg2 = sum(adj_multi);
+         out.degree(:,j) = deg2;
          out.top10cells(:,j) = cellsor(end-top10:end);
+         zerodeg = find(degree(:,j) == 0);
+         out.bottom10cells(1:length(zerodeg),j) = zerodeg; 
          out.correlation(j) = mean2(Rij);
     else
          lengthofprevious = size(Hubs_multi,1);
          out.Hubs_multi_pka(1:length(Hubs),j) = Hubs; %so that we can get pka and control
          out.num_hubs(j+lengthofprevious) = length(Hubs);
          out.Adj(:,j+lengthofprevious) = mean(Rij);
-         out.degree(:,j+lengthofprevious) = sum(adj_multi);
+         deg2 = sum(adj_multi);
+         out.degree_pka(:,j) = deg2;
+         zerodeg = find(out.degree_pka(:,j) == 0)
          out.top10cells_pka(:,j) = cellsor(end-top10:end);
+         out.bottom10cells_pka(1:length(zerodeg),j) = zerodeg;
          out.correlation_pka(j) = mean2(Rij);
     end
     %network analysis is performed
@@ -231,15 +240,17 @@ for j = 1:length(start_indx)-1 %network analysis would be start to start of osci
     ct = ct+1;
 end
     [loc_mean, loc_spread, Dist_from_cog,COG_KL,Degree_KL] = oscillationstability(length(start_indx)-1, Locations, degree, Adj, Hubs_multi);
-    clear Hubs_multi Adj
     
+    clear Hubs_multi Adj
+   
   %% Quantify distance of all cells from center and radially: 
   IsletCenter = mean(Locations);
+  Radius = max(max(abs([Locations(:,1) - IsletCenter(1), Locations(:,2) - IsletCenter(2), Locations(:,3) - IsletCenter(3)])))
   dist_from_center = sqrt((Locations(:,1) - IsletCenter(1)).^2 +(Locations(:,2) - IsletCenter(2)).^2 + (Locations(:,3) - IsletCenter(3)).^2);
-
+  dist_from_center = dist_from_center./max(dist_from_center); %normalize!
   % NEED TO QUANTIFY RADIAL: 
-
-
+   
+  maxdistance = range(Locations);
 
     %find top 10% of cells: 
         if i == 1
@@ -248,41 +259,70 @@ end
                 for j = 1:length(start_indx)-1
                     if k < j
                         intravar(k,j) = length(intersect(out.top10cells(:,k),out.top10cells(:,j)))/length(out.top10cells(:,k));
+                        out.cog_mov(k,j) = sqrt(sum((loc_mean(k,:) - loc_mean(j,:))./maxdistance).^2);
+                        %because of the scale free like nature, there are a
+                        %lot of 0 degree cells, so we are looking at all of
+                        %the 0 degree cells here! The maximum possible
+                        %intersection (=1) is limited by the length of the
+                        %shortest non zero array.
+                        intravar_bottom(k,j) = length(intersect(out.bottom10cells(:,k),out.bottom10cells(:,j)))/min(length(nonzeros(out.bottom10cells(:,k))), length(nonzeros(out.bottom10cells(:,j))));
                     else
                         intravar(k,j) = NaN;
+                        intravar_bottom(k,j) = NaN;
+                        out.cog_mov(k,j)  = NaN;
                     end
                 end
+            end
+            %get top10 location: 
+            for k = 1:size(out.top10cells,2)
+                out.distcenter_top10(:,k) = dist_from_center(out.top10cells(:,k)) 
             end
             out.meanLocation = loc_mean;
             out.STLocation = loc_spread;
             out.intravarall = intravar;
             out.intravar = mean2(intravar(~isnan(intravar)));
+            out.intravar_bottom = mean2(intravar_bottom(~isnan(intravar_bottom)));
+
             out.degree = degree;
+            out.dist_from_center = dist_from_center;
         else     
             out.Threshold_waves = Threshold; %save threshold
            for k = 1:length(find(start_indx > cuttime(2)))-1
                 for j = 1:length(find(start_indx > cuttime(2)))-1
                     if k < j
                         intravar_pka(k,j) = length(intersect(out.top10cells_pka(:,k), out.top10cells_pka(:,j)))/length(out.top10cells_pka(:,k));
+                        intravar_bottom_pka(k,j) = length(intersect(out.bottom10cells_pka(:,k),out.bottom10cells_pka(:,j)))/min(length(nonzeros(out.bottom10cells_pka(:,k))), length(nonzeros(out.bottom10cells_pka(:,j))));
+                        out.cog_mov_pka(k,j) = sqrt(sum((loc_mean(k,:) - loc_mean(j,:))./maxdistance).^2);
+
                     else
                         intravar_pka(k,j) = NaN;
+                        intravar_bottom_pka(k,j) = NaN;
+                        out.cog_mov_pka(k,j) = NaN;
                     end
                 end
            end
+           for k = 1:size(out.top10cells_pka,2)
+                out.distcenter_top10_pka(:,k) = dist_from_center(out.top10cells_pka(:,k)) 
+            end
            out.STLocation_pka = loc_spread;
            out.meanLocation_pka = loc_mean;
            out.intravarall_pka = intravar;
            out.intravar_pka = mean2(intravar_pka(~isnan(intravar_pka)));
+           out.intravarbottom_pka = mean2(intravar_bottom_pka(~isnan(intravar_bottom_pka)));
            out.degree_pka = degree;
+            out.dist_from_center_pka = dist_from_center;
+
             
            for k = 1:length(find(start_indx_hold > cuttime(2)))
                 for j = 1:length(find(start_indx_hold < cuttime(2)))
                     intervar(k,j) = length(intersect(out.top10cells(:,j),out.top10cells_pka(:,k)))/length(out.top10cells_pka(:,k));
+                    intervar_bottom(k,j) = length(intersect(nonzeros(out.bottom10cells(:,j)),nonzeros(out.bottom10cells_pka(:,k))))/min(length(nonzeros(out.bottom10cells_pka(:,k))), length(nonzeros(out.bottom10cells(:,j))));
                 end
            end
             out.intervar_all = mean2(intervar);
 
             out.intervar = mean2(intervar);
+            out.intervarbottom = mean2(intervar_bottom);
         end
 
         
@@ -327,24 +367,27 @@ end
         for j = 1:2
          figure(j)
          ax = gca
-            text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'Control','FontSize',30)
+          %  text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'Control','FontSize',30)
         end
     else
         for j = 1:2
             figure(j+2)
             ax = gca
-                text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'PKa Application','FontSize',30)
+                %text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'PKa Application','FontSize',30)
         end
     end
-    clear degree
 
 end
-    calcium_demeaned = (calcium-min(calcium))./(max(calcium)-min(calcium)); 
+    casmooth = smoothdata(calcium); 
+    cashort = [];
+    calcium_demeaned = (calcium-min(casmooth))./(max(casmooth)-min(casmooth)); 
+
+
     time = timestore;
     figure,
      for i = 1:size(cell_sorted_all,1)-1
      nexttile
-     plot(time, calcium_demeaned, 'color',[0.9,0.9,0.9])
+     plot(time, calcium_demeaned, 'color',[0.7,0.7,0.7])
      hold on, line2 = plot(time, calcium_demeaned(:,cell_sorted_all(i,1:10)), 'linewidth',1, 'color', 'red')
      hold on, line1 = plot(time, calcium_demeaned(:,cell_sorted_all(i,end-10:end)), 'linewidth',1, 'color', 'blue')
 
@@ -359,8 +402,23 @@ end
     set(gca, 'box','off')
 
      end
-%      saveas(gcf, [savename fileloc(end-5:end-1) filename 'AllOscillations.fig'])
-% 
+     
+    saveas(gcf, [savename '/' filename '_NetworkOscillation.png'])
+        %Check to make sure number of oscillations is the same
+      if find(size(out.degree) ~= size(out.degree_pka))
+         error('The number of oscillations in pre and post are not the same')
+     end
+
+    %Quantify change in degree between trials
+    out.change = mean(abs(diff([mean(out.degree'); mean(out.degree_pka')]./max(max([out.degree, out.degree_pka])))));
+ 
+
+    %find average top 10% from both trials
+    [~,pre_top10] = sort(sum(out.degree'));
+    out.top10av = pre_top10(end-top10:end);
+    [~,pka_top10] = sort(sum(out.degree_pka'));
+    out.top10pka = pka_top10(end-top10:end);
+   out.top10percent_avg = length(intersect(out.top10av, out.top10pka))./top10;
 
 % plot locations
      figure, 
@@ -370,12 +428,14 @@ end
     tt.Padding = 'compact'
         for i =  1:size(cell_sorted_all,1)
             nexttile
-            scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.5)
+            scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.1)
             hold on
             scatter3(Locations(cell_sorted_all(i,end-top10:end),1), Locations(cell_sorted_all(i,end-top10:end),2), Locations(cell_sorted_all(i,end-top10:end),3), 100, 'MarkerFaceColor', 'blue', 'MarkerEdgeColor','blue' )
-
             scatter3(Locations(cell_sorted_all(i,1:top10),1), Locations(cell_sorted_all(i,1:top10),2), Locations(cell_sorted_all(i,1:top10),3), 100, 'MarkerFaceColor', 'red', 'MarkerEdgeColor','red' )
-            legend('Normal Cell','High Degree','Low Degree','Location', 'Northeast')
+
+            legend('Normal Cell','High Degree','Low Degree', 'Location', 'Northeast')
+
+
             set(gca, 'color','none')
             title(['Oscillation Number ' num2str(i)])
         
@@ -385,14 +445,13 @@ end
 
         end
 
-        % saveas(gcf, [fileloc 'HighPhaseLocation.png'])
-         saveas(gcf, [savename '/' filename 'NetworkLocation.fig'])
+         saveas(gcf, [savename '/' filename '_NetworkLocation.fig'])
 
 
-try
-    saveAllFigsToPPT([savename '/' filename '/Network'])
-catch
-    mkdir([savename '/' filename])
-    saveAllFigsToPPT([savename '/' filename '/Network'])
-end
+% try
+%     saveAllFigsToPPT([savename '/' filename '/Network'])
+% catch
+%     mkdir([savename '/' filename])
+%     saveAllFigsToPPT([savename '/' filename '/Network'])
+% end
 end

@@ -91,6 +91,6 @@ for i = 1:wavenum
     end
     end
 
-    hold on, xline(start_indx(i), 'label',['start: ' num2str(i)]), xline(end_indx(i), 'label', ['end:' num2str(i)])
+    hold on, xline(start_indx(i), 'label',['start: ' num2str(i)]), xline(end_indx(i), 'color','r', 'label', ['end:' num2str(i)])
 end
 end

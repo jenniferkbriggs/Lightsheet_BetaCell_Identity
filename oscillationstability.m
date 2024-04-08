@@ -27,12 +27,15 @@ for i = 1:size(Hubs_multi,2)
     el_mean(i) = mean(el((Hubs_multi(:,i))),'omitnan');
     r_mean(i) = mean(r((Hubs_multi(:,i))),'omitnan');
     
-    cog(i,:) = mean(Locations(Hubs_multi(:,i),:)); %center of gravity
-    cog_std(i,:) = std(Locations(Hubs_multi(:,i),:))./range(Locations);
+    cog(i,:) = median(Locations(Hubs_multi(:,i),:)); %center of gravity - take median in case there are cells scattered a bit. 
+
+ locmean(i,:) = mean(Locations(Hubs_multi(:,i),:));
+
+    cog_std(i,:) = (sum((Locations(Hubs_multi(:,i),:)-cog(i,:)).^2,2))./max((sum((Locations(:,:)-cog(i,:)).^2,2)));
 end
+
+
 %Look at distance traved:
-
-
 else
     for i = 1:wavenum
     az_spread(i) = std(az(Hubs_multi(:,i)));
@@ -42,13 +45,19 @@ else
     az_mean(i) = mean(az(Hubs_multi(:,i)));
     el_mean(i) = mean(el(Hubs_multi(:,i)));
     r_mean(i) = mean(r(Hubs_multi(:,i)));
-    cog(i,:) = mean(Locations(Hubs_multi(:,i),:)); %center of gravity
-    cog_std(i,:) = std(Locations(Hubs_multi(:,i),:))./range(Locations);
+
+    
+    cog(i,:) = median(Locations(Hubs_multi(:,i),:)); %center of gravity
+    %max distance from cog
+ locmean(i,:) = mean(Locations(Hubs_multi(:,i),:));
+
+    cog_std(i,:) = (sum((Locations(Hubs_multi(:,i),:)-cog(i,:)).^2,2))./max((sum((Locations(:,:)-cog(i,:)).^2,2)));
     end
 end
 
-locmean = [r_mean', el_mean', az_mean'];
-locspread = [r_spread', el_spread', az_spread'];
+locspread = mean(cog_std');
+
+
 %for plotting ----
     numcells = length(degree);
     ydisplayvalues = sprintfc('%d',[1:(numcells)]);
@@ -86,8 +95,6 @@ figure,nexttile,
     ylabel('Normalized coordinate')
     
 % Regionality - how close is a cell from the center of gravity top X% of hubs?
-
-
 for i = 1:wavenum
     Dist_from_cog(:,i) = sqrt((Locations(:,1)-cog(i,1)).^2+(Locations(:,2)-cog(i,2)).^2+(Locations(:,3)-cog(i,3)).^2); %cell x wavenum
 end
@@ -110,12 +117,13 @@ figure,
    end
    ylabel('Cell Number')
    xlabel('Oscillation Number')
-   
+  
 
 for i = 1:wavenum
     [~,Dist_from_cog_indx(:,i)] = sort((Dist_from_cog(Dist_from_cog_idx,i)),'descend');
 end
 Dist_from_cog_indx = Dist_from_cog_indx./numcells;
+
 figure, 
    xvalues = [1:wavenum];
    yvalues = sprintfc('%d',[1:(numcells)]);
@@ -150,6 +158,7 @@ norm_degree =  (Adj-(min(Adj)))./((max(Adj))-(min(Adj)));
 for i = 1:wavenum
     [~,degree_indx(:,i)] = sort((norm_degree(sort_degree,i)),'descend')
 end
+
 degree_indx = degree_indx./numcells;
 figure, 
    xvalues = [1:wavenum];
@@ -170,7 +179,7 @@ figure,
 % ----- Q4 ----- %Compare KL divergence
 %calculate maximum kl divergence
 ct = 1 
-while ct < 10
+while ct < 100
     y = normpdf(degree_indx(:,2));
     x = y(randperm(length(y)));
     average_random(ct) = sum(y.*(log(y)-log(x)));
@@ -194,5 +203,8 @@ av_rand = mean(average_random);
     COG_KL = COG_KL./av_rand;
     
     
+% ---- Q5 ------ % Does the wave propogate on a specific pole
+
 end
-%figure, histogram(perc_time_hub), xlabel('Percent of time a hub cell is a hub cell'), ylabel('Frequency of percent')
+
+
