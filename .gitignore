@@ -1,3 +1,7 @@
 *.aux
 *.log
 *.asv
+*.png
+*.fig
+*.docx
+*.mat

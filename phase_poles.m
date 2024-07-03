@@ -62,6 +62,8 @@ for i = 1:(numOscillations)
 
 end
 
+
+% same calculation for "post" - vehicle, PKa, and GKa
 for i = 1:(numOscillations)
     loctop = Locations(top10_pka(i,:),:);
     locbottom = Locations(bottom10_pka(i,:),:);
@@ -88,7 +90,7 @@ for i = 1:(numOscillations)
 
 
     % for plotting
-        toprotated = [loctop*n1];
+     toprotated = [loctop*n1];
     bottomrotated = [locbottom*n1];
 
     Locrotated = Locations*n1;
@@ -146,8 +148,6 @@ rot_intra = mean(mean((rot_intra)))./rot_max; %Don't remove zeros because we don
 end
 
 function plot_rotated2d(numOscillations, top10, bottom10, top10_pka, bottom10_pka, Locations)
-
-
 figure, tt = tiledlayout(2, numOscillations)
 for i = 1:(numOscillations)
     loctop = Locations(top10(i,:),:);

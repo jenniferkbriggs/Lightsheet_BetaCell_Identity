@@ -47,7 +47,11 @@ disp(Threshold(i))
 [L, EGlob, CClosed, ELocClosed, COpen, ELocOpen, nopath]  = graphProperties(adj);
 G = graph(adj, 'upper');
 Hubs = cellsor((sorted - min(sorted))/range(sorted)>.60);
-
+if i == 1
+out.adj_pre = adj;
+else
+    out.adj_pka = adj;
+end
 %%------plot network------%%
 try
     c = 0.7.*ones(size(Locations));
@@ -96,12 +100,6 @@ if i == 1
 else
     for j = 1:5
         figure(j+5)
-        % ax = gca
-        % if j <6
-        %     text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'PKa Application','FontSize',30)
-        % else
-        %     text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'PKa Application','FontSize',30)
-        % end
     end
     Hubs_pka = Hubs;
     Netinfo_pka = [L, EGlob, CClosed,ELocOpen, nopath, mean2(Rij)];
@@ -385,7 +383,7 @@ end
 
     time = timestore;
     figure,
-     for i = 1:size(cell_sorted_all,1)-1
+     for i = 1:3%size(cell_sorted_all,1)-1
      nexttile
      plot(time, calcium_demeaned, 'color',[0.7,0.7,0.7])
      hold on, line2 = plot(time, calcium_demeaned(:,cell_sorted_all(i,1:10)), 'linewidth',1, 'color', 'red')

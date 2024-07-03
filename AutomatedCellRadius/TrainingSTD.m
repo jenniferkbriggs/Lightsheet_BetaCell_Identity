@@ -40,7 +40,7 @@ nuc_files = dir(strrep(strjoin([datapath filename(kt) '/' '*C2*.tif']),' ',''));
 
 
     try 
-       load(strrep(strjoin(['/Volumes/Briggs_10TB/Merrin/Confocal/' filename(kt) 'RetrainAnalysis.mat']), ' ', ''))
+       load(strrep(strjoin(['/Volumes/Briggs_10TB/Merrin/Confocal/' filename(kt) 'RetrainAnalysis5.mat']), ' ', ''))
     catch
         %% Load nucleus location 
         nucloc = readtable(strrep(strjoin([datapath csvname(kt)]),'/ ','/')); %import nucleus location csv

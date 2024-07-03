@@ -308,6 +308,8 @@ end
     end
     
   end
+
+%WAVE AXIS IDENTIFICATION  
 try
     [out.rot, out.rot_pka, out.rot_intra] = phase_poles(length(indexes), out.top10, out.bottom10, out.top10_pka, out.bottom10_pka, Locations);
 catch
@@ -381,7 +383,7 @@ end
    % 
    %  tt.TileSpacing = 'compact'
    %  tt.Padding = 'compact'
-        for i = 1:3%size(cells_sorted, 1)
+        for i = 1:size(cells_sorted, 1)
             nexttile
             scatter3(Locations(:,1), Locations(:,2), Locations(:,3), 75, 'MarkerFaceColor', [0.7, 0.7, 0.7], 'MarkerEdgeColor',[0.7, 0.7, 0.7] , 'MarkerFaceAlpha', 0.1)
             hold on

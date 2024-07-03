@@ -66,27 +66,27 @@ middle_Z = range(Locations(:,3))./2 + minny;
 cells_middle = find(abs(middle_Z - Locations(:,3))< 3);
 calcium_middle = calcium(:,cells_middle);
 
-thirdsZ = 3*range(Locations(:,3))./4 + minny;
+thirdsZ = -40; %3*range(Locations(:,3))./4 + minny;
 cells_thirds = find(abs(thirdsZ - Locations(:,3))< 3);
 figure, p1 = plot3(Locations(:,1),Locations(:,2),Locations(:,3),'o'), hold on,  p2 = plot3(Locations(cells_thirds,1),Locations(cells_thirds,2),Locations(cells_thirds,3),'bo', 'MarkerFaceColor','b')
 p3 = plot3(Locations(cells_middle,1),Locations(cells_middle,2),Locations(cells_middle,3),'ro', 'MarkerFaceColor','r')
 legend([p2, p3], '1/4 Z-stack','1/2 Z-stack')
 calcium_third = calcium(:,cells_thirds);
-
-if i == 29
-    middle_Z = -50;
-
-
-    cells_middle = find(abs(middle_Z - Locations(:,3))< 3);
-    calcium_middle = calcium(:,cells_middle);
-    
-    thirdsZ = -30;
-    cells_thirds = find(abs(thirdsZ - Locations(:,3))< 3);
-    figure, p1 = plot3(Locations(:,1),Locations(:,2),Locations(:,3),'o'), hold on,  p2 = plot3(Locations(cells_thirds,1),Locations(cells_thirds,2),Locations(cells_thirds,3),'bo', 'MarkerFaceColor','b')
-    p3 = plot3(Locations(cells_middle,1),Locations(cells_middle,2),Locations(cells_middle,3),'ro', 'MarkerFaceColor','r')
-    legend([p2, p3], '1/4 Z-stack','1/2 Z-stack')
-    calcium_third = calcium(:,cells_thirds);
-end
+% 
+% if i == 29
+%     middle_Z = -50;
+% 
+% 
+%     cells_middle = find(abs(middle_Z - Locations(:,3))< 3);
+%     calcium_middle = calcium(:,cells_middle);
+% 
+%     thirdsZ = -30;
+%     cells_thirds = find(abs(thirdsZ - Locations(:,3))< 3);
+%     figure, p1 = plot3(Locations(:,1),Locations(:,2),Locations(:,3),'o'), hold on,  p2 = plot3(Locations(cells_thirds,1),Locations(cells_thirds,2),Locations(cells_thirds,3),'bo', 'MarkerFaceColor','b')
+%     p3 = plot3(Locations(cells_middle,1),Locations(cells_middle,2),Locations(cells_middle,3),'ro', 'MarkerFaceColor','r')
+%     legend([p2, p3], '1/4 Z-stack','1/2 Z-stack')
+%     calcium_third = calcium(:,cells_thirds);
+% end
 
 name = name(find(~isspace(name)));
 %remove dashes:
@@ -95,31 +95,31 @@ name(toremove) = [];
 
 saveas(gcf, [savename '/' name '2Dvs3D.fig'])
 saveas(gcf, [savename '/' name '2Dvs3D.png'])
-end
+
 %% Run network analysis
-% network_threequarter = Network_3D(calcium_third, cuttime, numtrial, photobleaching, [savename '/threequarter'], fileloc, name, Locations(cells_thirds,:), timestore,start_indx, end_indx);
-% network_half = Network_3D(calcium_middle, cuttime, numtrial, photobleaching, [savename '/half'], fileloc, name, Locations(cells_middle,:), timestore,start_indx, end_indx);
+network_threequarter = Network_3D(calcium_third, cuttime, numtrial, photobleaching, [savename '/threequarter'], fileloc, name, Locations(cells_thirds,:), timestore,start_indx, end_indx, 0);
+% = Network_3D(calcium_middle, cuttime, numtrial, photobleaching, [savename '/half'], fileloc, name, Locations(cells_middle,:), timestore,start_indx, end_indx);
 % 
 % 
 % network_all.(name).half2D = network_half;
 % network_all.(name).half2D.cellindex = cells_middle;
-% network_all.(name).threequarter2D = network_threequarter;
-% network_all.(name).threequarter2D.cellindex = cells_thirds;
+network_all.(name).threequarter2D = network_threequarter;
+network_all.(name).threequarter2D.cellindex = cells_thirds;
 % network_all.(name).threeD = network3.(name);
-% 
-% close all
+
+close all
 
 %% Run waveintiator analysis
 
 wave_threequarter = Wave_3D(calcium_third, cuttime, numtrial, photobleaching, [savename '/threequarter'], fileloc, name, Locations(cells_thirds,:), timestore,start_indx, end_indx, time,0, 1,1);
-wave_half = Wave_3D(calcium_middle, cuttime, numtrial, photobleaching, [savename '/half'], fileloc, name,  Locations(cells_middle,:), timestore,start_indx, end_indx, time,0, 1,1);
-wave_3 = Wave_3D(calcium, cuttime, numtrial, photobleaching, [savename '/ThreeD'], fileloc, name,  Locations, timestore,start_indx, end_indx, time,0, 1,1);
+%wave_half = Wave_3D(calcium_middle, cuttime, numtrial, photobleaching, [savename '/half'], fileloc, name,  Locations(cells_middle,:), timestore,start_indx, end_indx, time,0, 1,1);
+%wave_3 = Wave_3D(calcium, cuttime, numtrial, photobleaching, [savename '/ThreeD'], fileloc, name,  Locations, timestore,start_indx, end_indx, time,0, 1,1);
 
 
 
-wave_all.(name).half2D = wave_half;
+%wave_all.(name).half2D = wave_half;
 wave_all.(name).threequarter2D = wave_threequarter;
-wave_all.(name).threeD = wave_3;
+%wave_all.(name).threeD = wave_3;
 
 disp(i)
 end

@@ -1,7 +1,7 @@
 %% Analyze network and wave from 3D
 
 %extract data
-timeseries = fieldnames(network_all)
+timeseries = fieldnames(wave_all)
 GKa = find(contains(timeseries, 'GKa'));
 PKa = find(contains(timeseries, 'PKa'));
 Control = setxor([1:length(timeseries)], [GKa; PKa]);
@@ -125,6 +125,34 @@ end
 
 %reset arrays to nan
 [Control_corrafter Control_corrbefore GKa_corrbefore GKa_corrafter PKa_corrbefore PKa_corrafter Control_corrboth PKa_corrboth GKa_corrboth]= mkarrays();
+
+
+%% number of hubs
+
+    for i = 1:length(GKa)
+        GKa_corrbefore(i) = mean(nonzeros(network_all.(timeseries{GKa(i)}).Hubs_multi));
+        GKa_corrafter(i) = mean(nonzeros(network_all.(timeseries{GKa(i)}).Hubs_multi_pka));
+    end
+    for i = 1:length(PKa)
+        PKa_corrbefore(i) = mean(nonzeros(network_all.(timeseries{PKa(i)}).Hubs_multi));
+        PKa_corrafter(i) = mean(nonzeros(network_all.(timeseries{PKa(i)}).Hubs_multi_pka));
+    end
+    for i = 1:length(Control)
+        Control_corrbefore(i) = mean(nonzeros(network_all.(timeseries{Control(i)}).Hubs_multi));
+        Control_corrafter(i) = mean(nonzeros(network_all.(timeseries{Control(i)}).Hubs_multi_pka))
+    end
+ 
+        CorrelationTable = array2table([Control_corrbefore; ...
+        Control_corrafter]', 'VariableNames',{'Pre-', 'Vehicle'})
+    writetable(CorrelationTable, [savename, 'Number_of_hubs', 'Control.csv'] )
+        CorrelationTable = array2table([GKa_corrbefore; ...
+        GKa_corrafter]', 'VariableNames',{'Pre-', 'GKa'})
+    writetable(CorrelationTable, [savename, 'Number_of_hubs', 'GKa.csv'] )
+        CorrelationTable = array2table([PKa_corrbefore; ...
+        PKa_corrafter]', 'VariableNames',{'Pre-', 'PKa'})
+    writetable(CorrelationTable, [savename, 'Number_of_hubs', 'PKa.csv'] )
+[Control_corrafter Control_corrbefore GKa_corrbefore GKa_corrafter PKa_corrbefore PKa_corrafter Control_corrboth PKa_corrboth GKa_corrboth]= mkarrays();
+
 
 
 %% location top 10

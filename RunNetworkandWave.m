@@ -27,7 +27,7 @@ for i = 5:length(files)
 end
 
 %% Start analysis
-for i = 1:length(files_dir)
+for i = 2:length(files_dir)
 fullfile = [fileloc files_dir{i}{1} '/']
 name = files_dir{i}{1}
 
@@ -51,7 +51,7 @@ end
     timestore = time;
     fignum = 1
  try 
-       load([fullfile 'waveindx_samenumber.mat']);
+       load([fullfile 'waveindx_samenumberkk.mat']);
 
   catch
 
@@ -71,8 +71,9 @@ end
             cuttime(1) = 1
             cuttime(2) = length(calcium)
         end
+        figure, plot(time, mean(calcium'))
         disp("Resize the figure and then click continue after you are happy with it")
-        Opts.direction_hold = 1
+        Opts.direction_hold = 0
         Opts.figs = 0;
         xline(time(round(cuttime(2))), 'linewidth',3)
 
@@ -96,10 +97,10 @@ end
 %close figure 7
 %%Run network analysisclose all
 % %%Run waveintiator analysis
- wave = Wave_3D(calcium, cuttime, numtrial, photobleaching, [savename '/AllImages'], fileloc, name, Locations, timestore,start_indx, end_indx, time,1, 1,1);
+wave = Wave_3D(calcium, cuttime, numtrial, photobleaching, [savename '/AllImages'], fileloc, name, Locations, timestore,start_indx, end_indx, time,1, 1,1);
 
 
- network = Network_3D(calcium, cuttime, numtrial, photobleaching, [savename '/AllImages'], fileloc, name, Locations, timestore,start_indx, end_indx);
+ network = Network_3D(calcium, cuttime, numtrial, photobleaching, [savename '/AllImages'], fileloc, name, Locations, timestore,start_indx, end_indx, 0);
 % depolarize = Wave_3D(calcium, cuttime, numtrial, photobleaching, [savename '/AllImages'], fileloc, name, Locations, timestore,start_indx, end_indx, time,1, 0,0);
 % % 
 % % %% 
@@ -108,18 +109,18 @@ end
 % % 
 % % %% 
 % % %remove spaces from string:
-% name = name(find(~isspace(name)));
-% %remove dashes:
-% toremove = strfind(name, '-');
-% name(toremove) = [];
+name = name(find(~isspace(name)));
+%remove dashes:
+toremove = strfind(name, '-');
+name(toremove) = [];
 
-wave_all.(name)= wave;
+%wave_all.(name)= wave;
 network_all.(name)= network;
-wave_all.(name).Locations=  normalize(Locations, "range");
-depolarize_all.(name) = depolarize;
-repolarize_all.(name) = repolarize;
-calcium_all.(name) = calcium;
-time_all.(name) = time;
+% wave_all.(name).Locations=  normalize(Locations, "range");
+% depolarize_all.(name) = depolarize;
+% repolarize_all.(name) = repolarize;
+% calcium_all.(name) = calcium;
+% time_all.(name) = time;
 disp(i)
 clear end_indx_repol
 end
