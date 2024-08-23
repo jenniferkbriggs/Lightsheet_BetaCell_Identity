@@ -51,7 +51,7 @@ end
     timestore = time;
     fignum = 1
  try 
-       load([fullfile 'waveindx_samenumberkk.mat']);
+       load([fullfile 'waveindx_samenumber.mat']);
 
   catch
 
