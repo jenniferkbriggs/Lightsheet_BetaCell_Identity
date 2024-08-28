@@ -27,11 +27,11 @@ Comprehensive readme to come.
 ## Regional_Consistancy
 The function **locmap.m** has multiple analyses in attempt to identify the regional consistency of high and low phase cells in the 3D Islet
 
-### 1) -->
+### 1) 
 
 
 ## First_Responders
 
 
 
-## Network
+## Network-->
