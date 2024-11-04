@@ -1,11 +1,13 @@
-# Merrins3Ddata
+# README
 
-This repository was created to do general analysis of 3D lightsheet calcium recordings of the islet <br>
-Code: Jennifer Briggs 2022, Light Sheet: Erli Jin 2021-2022, PI's: Richard Benninger and Matthew Merrins <br>
+This repository was created to do general analysis of 3D lightsheet calcium recordings of the islet - findings published in "Glucokinase activity controls subpopulations of β-cells that alternately lead islet Ca2+ oscillations" <br>
+Code: Jennifer Briggs 2022, Data: Erli Jin 2021-2022, PI's: Richard Benninger and Matthew Merrins <be>
+
+Comprehensive readme to come. 
 
 
 
-## Table of Contents
+<!-- ## Table of Contents
 
 - [Background](#background)
 - [Automated Cell Radius Analysis](#Automated_Cell_Radius)
@@ -32,4 +34,4 @@ The function **locmap.m** has multiple analyses in attempt to identify the regio
 
 
 
-## Network
+## Network-->
