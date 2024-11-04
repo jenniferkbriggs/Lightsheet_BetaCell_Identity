@@ -75,7 +75,7 @@ end
     vq1 = interp1(1:size(cashort,1),cashort,xq); %may need to investigate a better way to do this
     %vq2 = spline(1:size(cashort,1),cashort',xq);
     
-    timeunits = mean(diff(time), 'omitnan')*step*1000; %ms
+    timeunits = mean(diff(time), 'omitnan')*step*10; %ms
     numcells=size(cashort,2);
 
     calciumT = (vq1);                           % new calcium time course
@@ -123,7 +123,7 @@ end
    % THE REST OF CODE IS USED FO
 
     newmaxCLvec_init = maxCL-mean(maxCL);
-    newmaxCLvec(i,:) = newmaxCLvec_init/timeunits; %outputs phase difference in ms
+    newmaxCLvec(i,:) = newmaxCLvec_init.*timeunits; %outputs phase difference in ms
 
    %  clear maxCL
     if isempty(nonzeros(newmaxCLvec_init))
@@ -226,7 +226,7 @@ end
             TopLoc = [Locations(out.top10(l,:),1), Locations(out.top10(l,:),3), Locations(out.top10(l,:),3)];
             TopCOG(l,:) = mean(TopLoc);
             out.Dist_traveled(l) = norm(TopCOG(l,:) - BottomCOG(l,:));
-            out.phasespread_10(l) = (mean(newmaxCLvec(l,out.bottom10(l,:)))-mean(newmaxCLvec(l,out.top10(l,:))));
+            out.phasespread_10(l) = (median(newmaxCLvec(l,out.bottom10(l,:)))-median(newmaxCLvec(l,out.top10(l,:))));
             out.Velocity(l) = out.Dist_traveled(l)./out.phasespread_10(l);
         end
         for k = 1:length(find(start_indx < cuttime(2)))
@@ -271,7 +271,7 @@ end
             TopLoc = [Locations(out.top10_pka(l,:),1), Locations(out.top10_pka(l,:),3), Locations(out.top10_pka(l,:),3)];
             TopCOG(l,:) = mean(TopLoc);
             out.Dist_traveled_pka(l) = norm(TopCOG(l,:) - BottomCOG(l,:));
-            out.phasespread_10_pka(l) = (mean(newmaxCLvec(l+length(start_indx)./2,out.bottom10_pka(l,:)))-mean(newmaxCLvec(l+length(start_indx)./2,out.top10_pka(l,:))));
+            out.phasespread_10_pka(l) = (median(newmaxCLvec(l+length(start_indx)./2,out.bottom10_pka(l,:)))-median(newmaxCLvec(l+length(start_indx)./2,out.top10_pka(l,:))));
             out.Velocity_pka(l) = out.Dist_traveled_pka(l)./out.phasespread_10_pka(l);
         end
 
@@ -367,6 +367,7 @@ end
     ylabel('Normalized Ca^{2+} Fluoresence')
     set(gca, 'box','off')
 
+    calcium = calstore;
      end
     if saveon
     if wholeosc
