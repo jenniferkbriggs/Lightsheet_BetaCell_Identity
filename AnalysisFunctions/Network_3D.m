@@ -1,21 +1,38 @@
-function out = Network_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, timestore,start_indx, end_indx, saveon)
-%% Run Network Analysis
+function out = Network_3D(calcium, cuttime, numtrial, photobleaching, savename, fileloc, filename, Locations, timestore,start_indx, saveon)
+
+%This code calculates all network analysis-related measures: 
+% Inputs: Calcium - a txn matrix where t is time and n is cells. 
+%         cuttime - indexed times denoting start and stop of each condition (see RunNetworkandWave.m)
+%         numtrial - number of conditions - for most of the paper Jin, Briggs et al., this is set to 2 because there was (for example) a control and then a GKa condition
+%         photobleaching - binary variable which controls whether to detrend the dataset due to photobleaching (was set to 0 for the manuscript)
+%         savename, fileloc, filenmae - paths where the figures are saved
+%         Locations - array with x,y,z locations for each cell
+%         timestore - just the time array
+%         start_indx - indices corresponding to the beginning of each oscillation
+%         saveon - whether or not to write csvs (default on)
+
+
+%% Run Network Analysis for 3D system
 % Jennifer Briggs 06/02/2022
-ct = 1;
+ct = 1; %just a counter for oscillations
 %options:
 if ~exist('saveon') %writing output to csv. If no options then write
     saveon = 1
 end
 
+%percent of cells to count as "high degree"
 perc=0.1;
 
-if photobleaching
+%Correct for photobleachine
+if photobleaching 
     [~,bo] = detrend_photobleaching(calcium(cuttime(1):cuttime(2),:)); % only remove photobleaching based on control!
     trendline = polyval(bo, [0:length(calcium)-1]');
     calstore = (calcium-trendline)./(trendline-min(min(calcium)));
 else
     calstore = calcium;
 end
+
+%Identify network threshold
 for i = 1:numtrial
 calcium = calstore(cuttime(i):cuttime(i+1),:);
 time = timestore(cuttime(i):cuttime(i+1),:);
@@ -26,101 +43,11 @@ Opts.avDeg = 7;
 Threshold(i) = findoptRth(calcium, Opts);
 end
 
-
-%Threshold = mean(Threshold) %outstanding question - should I take the average of the thresholds??
-for i = 1:numtrial
-calcium = calstore(cuttime(i):cuttime(i+1),:);
-time = timestore(cuttime(i):cuttime(i+1),:);
-
-Opts.direction_hold = 1;
-Opts.printasSubplot = 0;
-Opts.Subplotnum = 0;
-Opts.figs = 1;
-Opts.multiseed = 0;
-Opts.multiseednum = 1;
-fignum = 1;
-
-disp(Threshold(i))
-[N, adj, kperc, histArrayPercShort, Rij] = links(calcium,Threshold(i),Opts,fignum); %%This is where the network is built
-[sorted, cellsor]= sort(N);
-%network analysis is performed
-[L, EGlob, CClosed, ELocClosed, COpen, ELocOpen, nopath]  = graphProperties(adj);
-G = graph(adj, 'upper');
-Hubs = cellsor((sorted - min(sorted))/range(sorted)>.60);
-if i == 1
-out.adj_pre = adj;
-else
-    out.adj_pka = adj;
-end
-%%------plot network------%%
-try
-    c = 0.7.*ones(size(Locations));
-    c(Hubs,1) = ones(length(Hubs), 1).*136/255;
-    c(Hubs,2) = ones(length(Hubs), 1).*8./255';
-    c(Hubs,3) = ones(length(Hubs), 1).*8./255';
-    figure, plot(graph(sparse(adj), 'upper'), 'Xdata',Locations(:,1), 'Ydata',Locations(:,2), ...
-        'Zdata',Locations(:,3),'NodeColor',c, 'MarkerSize',15, 'EdgeColor','k', 'LineWidth',3)
-    %hidden graphs for legend
-    hold on,
-    ghubs = plot(graph(sparse([0,1;1,0])), 'NodeColor',[136/255,8./255,8./255'],...
-        'Xdata',Locations(1:2,1),'Ydata',Locations(1:2,2),'Zdata',Locations(1:2,3),...
-        'MarkerSize',15, 'EdgeColor','k', 'LineWidth',3)
-    hold on,
-    gnonhubs = plot(graph(sparse([0,1;1,0])), 'NodeColor',[0.7,0.7,0.7],...
-        'Xdata',Locations(1:2,1),'Ydata',Locations(1:2,2),'Zdata',Locations(1:2,3),...
-        'MarkerSize',15, 'EdgeColor','k', 'LineWidth',3)
-    legend([ghubs, gnonhubs], {'Hubs','Non-hubs'},'Location', 'northeast')
-    set(gca, 'color','none')
-    set(gca, 'box','off')
-    set(gca,'ytick',[]), set(gca,'xtick',[]), set(gca,'ztick',[])
     
-    %turn off graphs for legend
-    set(ghubs,'Visible','off'), set(gnonhubs,'Visible','off')
-end
-    top10 = length(N)*perc;
-    
-if i == 1
-    for j = 1:5
-     figure(j)
-     ax = gca
-     % if j<6
-     %    text(ax.XLim(end)-range(ax.XLim)/4, ax.YLim(end)-range(ax.YLim)/4,'Control','FontSize',30)
-     % else
-     %    text(ax.XLim(end)-range(ax.XLim)/4, ax.ZLim(end)-range(ax.ZLim)/4,'Control','FontSize',30)
-     % end
-    end
-    Hubs_control = Hubs;
-    Netinfo_control = [L, EGlob, CClosed,ELocOpen, nopath, mean2(Rij)];
-    out.Hubs = Hubs;
-    out.L = L;
-    out.Threshold_all = Threshold;
-    out.N = N;
-    out.Corr = mean2(Rij);
-    out.sorted_deg = flipud(cellsor);
-else
-    for j = 1:5
-        figure(j+5)
-    end
-    Hubs_pka = Hubs;
-    Netinfo_pka = [L, EGlob, CClosed,ELocOpen, nopath, mean2(Rij)];
-    out.Hubs_pka = Hubs;
-    out.L_pka = L;
-    out.N_pka = N;
-    out.Corr_pka = mean2(Rij);
-    out.sorted_deg_pka = flipud(cellsor);
-    out.mainted_perc = length(intersect(out.sorted_deg(1:top10), out.sorted_deg_pka(1:top10)))/length(out.sorted_deg(1:top10))
-end
-
-
-end
-%percent of Hubs that are consistent across conditions:
-
-
-
-    
-%% analysis for consistency in hubs across oscillations:
+%% - Analysis consistency - 
 % for plotting: 
 numcells = length(adj)
+
     ydisplayvalues = sprintfc('%d',[1:(numcells)]);
        ydisplayvalues(1:10:length(ydisplayvalues)) = {''};
        ydisplayvalues(2:10:length(ydisplayvalues)) = {''};
@@ -134,6 +61,7 @@ numcells = length(adj)
        
 start_indx_hold = start_indx;
 
+%Calculate the network for each oscillation! 
 for i = 1:numtrial
     calcium = calstore;
     time = timestore(cuttime(i):cuttime(i+1),:);
@@ -170,7 +98,21 @@ figure
 Opts.figs = 0;
 Opts.direction_hold = 1;
 for j = 1:length(start_indx)-1 %network analysis would be start to start of oscillation
+    %Runs network analysis --- important! - links is found in https://github.com/jenniferkbriggs/Functional_and_Structural_Networks.git
+
+    %Network options
+    Opts.direction_hold = 1;
+    Opts.printasSubplot = 0;
+    Opts.Subplotnum = 0;
+    Opts.figs = 1;
+    Opts.multiseed = 0;
+    Opts.multiseednum = 1;
+    fignum = 1;
+
+
     [N, adj_multi, ~, ~,~,Rij,~] = links(calcium(start_indx(j):start_indx(j+1),:), Threshold(j),Opts,fignum); %%This is where the network is built
+
+
     [sorted, cellsor]= sort(N);
     Hubs = cellsor((sorted - min(sorted))/range(sorted)>.60);
     degree(:,j) = sum(adj_multi);
@@ -197,7 +139,6 @@ for j = 1:length(start_indx)-1 %network analysis would be start to start of osci
          out.bottom10cells_pka(1:length(zerodeg),j) = zerodeg;
          out.correlation_pka(j) = mean2(Rij);
     end
-    %network analysis is performed
   
     %%------plot network------%%
     if 0
@@ -444,12 +385,4 @@ end
         end
 
          saveas(gcf, [savename '/' filename '_NetworkLocation.fig'])
-
-
-% try
-%     saveAllFigsToPPT([savename '/' filename '/Network'])
-% catch
-%     mkdir([savename '/' filename])
-%     saveAllFigsToPPT([savename '/' filename '/Network'])
-% end
 end
