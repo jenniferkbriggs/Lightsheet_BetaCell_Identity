@@ -1,7 +1,5 @@
 # README
 
-## Overview
-
 This repository contains code for the analysis of 3D lightsheet calcium recordings of pancreatic islets. The findings from this analysis are published in:
 
 **Jin Erli, Briggs Jennifer K., Benninger Richard K.P., Merrins Matthew J. (2024)**  
